@@ -1,0 +1,50 @@
+.borderRadius {
+  border-top-right-radius: 0;
+  border-top-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+
+.active {
+  background-color: white;
+  color: #1e3a8a;
+}
+
+@media screen and (min-width: 320) and (max-width: 468) {
+  .borderRadius {
+    border-top-right-radius: 0;
+    border-top-left-radius: 9px;
+    border-bottom-right-radius: 9px;
+    font-size: 11px !important;
+  }
+}
+
+@media screen and (min-width: 469) and (max-width: 600) {
+  .borderRadius {
+    border-top-right-radius: 0;
+    border-top-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    font-size: 12px !important;
+  }
+}
+
+@media screen and (min-width: 601) and (max-width: 640) {
+  .borderRadius {
+    border-top-right-radius: 0;
+    border-top-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    font-size: 13px !important;
+  }
+}
+
+/* @media screen and (min-width: 641) and (max-width: 820) {
+  .borderRadius {
+    font-size: 14px !important;
+  }
+} */
+
+/* @media screen and (max-width: 767px) {
+  .borderRadius {
+    border-top-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+} */

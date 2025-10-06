@@ -1,0 +1,41 @@
+.wrapper {
+  width: 100%;
+}
+
+.leftContent {
+  width: 40%;
+  margin-top: 80px;
+  font-family: Arial, sans-serif;
+  color: #002e5b;
+}
+
+.leftContent h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.orange {
+  color: #ff7b00;
+}
+
+.leftContent p {
+  margin: 10px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.radioGroup {
+  margin-bottom: 15px;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.radioGroup label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.radioGroup input {
+  margin-right: 8px;
+}

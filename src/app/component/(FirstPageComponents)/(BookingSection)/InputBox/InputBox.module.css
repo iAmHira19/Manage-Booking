@@ -1,0 +1,44 @@
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.customRangePicker {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.customRangePicker .ant-picker-input > input {
+  border: none !important;
+  outline: none !important;
+}
+
+.customRangePicker:hover,
+.customRangePicker:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.customRangePicker .ant-picker-suffix {
+  display: none;
+}
+
+.customSelect :global(.ant-select-arrow) {
+  display: none !important;
+}
+
+.customSelect :global(.ant-select-selector) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.customSelect :global(.ant-select-focused .ant-select-selector) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.preferedAirlines {
+  height: 1rem !important;
+}

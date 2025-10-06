@@ -1,0 +1,21 @@
+/* .item{
+    position: relative;
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+.text{
+    position: absolute;
+    bottom: -145px;
+    width: 100%;
+    text-align: left;
+    padding-left: 20px ;
+    color: azure;
+    transition: all .5s ease-in-out;
+     margin-bottom: -10px; 
+}
+.item:hover .text{
+    bottom: 20px;
+    
+    
+}
+ */

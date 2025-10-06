@@ -1,0 +1,167 @@
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* styles/globals.css */
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Black.otf") format("opentype"),
+    url("/gotham/Gotham-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-BlackItalic.otf") format("opentype"),
+    url("/gotham/Gotham-BlackItalic.ttf") format("truetype");
+  font-weight: 900;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Bold.otf") format("opentype"),
+    url("/gotham/Gotham-Bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-BoldItalic.otf") format("opentype"),
+    url("/gotham/Gotham-BoldItalic.ttf") format("truetype");
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Light.otf") format("opentype"),
+    url("/gotham/Gotham-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-LightItalic.otf") format("opentype"),
+    url("/gotham/Gotham-LightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Medium.otf") format("opentype"),
+    url("/gotham/Gotham-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-MediumItalic.otf") format("opentype"),
+    url("/gotham/Gotham-MediumItalic.ttf") format("truetype");
+  font-weight: 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-ThinItalic.otf") format("opentype");
+  font-weight: 100;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-Ultra.otf") format("opentype");
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-UltraItalic.otf") format("opentype");
+  font-weight: 800;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-XLight.otf") format("opentype");
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("/gotham/Gotham-XLightItalic.otf") format("opentype");
+  font-weight: 200;
+  font-style: italic;
+}
+
+/* Apply Gotham as a global font */
+body {
+  font-family: "Gotham", sans-serif;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
+}
+.ant-btn:hover,
+.ant-btn:active {
+  border: none !important;
+}
+
+.ant-select-selection-item {
+  font-weight: 400 !important;
+}
+
+.City .ant-select-selection-item,
+.Country .ant-select-selection-item {
+  font-weight: 300 !important;
+}
+
+.priority .ant-select-selector,
+.apiSupplier .ant-select-selector:hover,
+.apiSupplier .ant-select-selector:active,
+.apiSupplier .ant-select-selector:focus,
+.apiSupplier .ant-select-selector,
+.apiSupplier .ant-select-selector:hover,
+.apiSupplier .ant-select-selector:active,
+.apiSupplier .ant-input {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.orange-search-button .ant-btn-primary {
+  background-color: #f97316 !important;
+  border-color: #f97316 !important;
+}
+
+.orange-search-button .ant-btn-primary:hover {
+  background-color: #ea580c !important;
+  border-color: #ea580c !important;
+}
+
+/* Hide error overlays in next.js  */
+
+nextjs-portal {
+  display: none;
+}

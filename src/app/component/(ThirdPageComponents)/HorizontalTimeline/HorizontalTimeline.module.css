@@ -1,0 +1,240 @@
+/* Styles */
+.timeline-container {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.flight-list-info {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  flex: 1;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .flight-list-info {
+    flex-flow: row wrap;
+    padding: 0 0 22px 0;
+  }
+  .flight-list-info .flight-date {
+    order: 2;
+  }
+  .flight-list-info .flights-points {
+    order: 2;
+  }
+  .timeline-container {
+    height: 168px !important;
+  }
+}
+
+.flight-pos {
+  flex: 0 auto;
+  width: 115px;
+}
+
+@media (min-width: 900px) and (max-width: 1023px) {
+  .flight-pos {
+    width: 99px;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1400px) {
+  .flight-pos {
+    width: 90px;
+  }
+}
+
+.flight-pos:last-child {
+  text-align: right;
+}
+
+@media (max-width: 767px) {
+  .flight-pos {
+    order: 1;
+    width: 50%;
+    padding: 0 0 28px 0;
+  }
+}
+
+.flight-time {
+  font-size: 2rem;
+  font-weight: 300;
+  color: #000;
+}
+
+@media (max-width: 767px) {
+  .flight-time {
+    font-size: 1.38rem;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1400px) {
+  .flight-time {
+    font-size: 1.8rem;
+  }
+}
+
+.flight-city {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+  .flight-city {
+    font-size: 0.75rem;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1400px) {
+  .flight-city {
+    font-size: 0.9rem;
+  }
+}
+
+.flight-date {
+  flex: 0 auto;
+  white-space: nowrap;
+  opacity: 0.5;
+  width: 50px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.flights-pointContainer {
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .flight-date {
+    font-size: 0.63rem;
+    width: 30px;
+  }
+}
+
+.flights-points {
+  font-size: 0.75rem;
+  flex: 1;
+  position: relative;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .flights-points {
+    flex-wrap: wrap !important;
+    font-size: 0.63rem;
+  }
+}
+
+.flights-points-text {
+  opacity: 1;
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .flights-points-text {
+    font-size: 0.63rem;
+  }
+}
+
+.flights-duration {
+  opacity: 1;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -35px;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .flights-duration {
+    font-size: 0.63rem;
+  }
+}
+
+.flights-points-line {
+  height: 2px;
+  background: #0000001f;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1100px) {
+  .flights-pointContainer {
+    position: relative;
+    margin-top: -3px;
+  }
+}
+
+.flights-pointContainer:first-child .flight-abbr,
+.flights-pointContainer:last-child .flight-abbr {
+  opacity: 1;
+}
+
+.flights-pointContainer .flight-abbr {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 80px;
+  text-align: center;
+  margin: 0 0 0 -40px;
+  color: #4a4a4a;
+  opacity: 0.5;
+}
+
+.flights-icon {
+  margin-top: -18px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f6e6e;
+}
+
+@media screen and (max-width: 1100px) {
+  .flights-icon {
+    margin-top: -16px;
+  }
+  .connecting-icon .flights-icon {
+    margin-top: -11px;
+  }
+  .connecting-icon .flights-icon .con-icon {
+    font-size: 25px;
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .flights-icon {
+    margin-top: -15px;
+  }
+  .connecting-icon .flights-icon {
+    margin-top: -11px;
+  }
+  .connecting-icon .flights-icon .con-icon {
+    font-size: 25px;
+  }
+}
+
+/* 
+.flights-point {
+  margin-top: -5px;
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #757575;
+  background-color: #f2f2f2;
+} */

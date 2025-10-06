@@ -1,0 +1,45 @@
+.TabBar {
+  gap: 3px;
+  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
+  border-top-left-radius: 20px;
+  position: relative;
+}
+
+.bg {
+  background: url("/gif/bg1.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  min-height: 50vh;
+  width: 100%;
+}
+
+.bookingWrapper {
+  position: relative;
+  bottom: 4rem;
+  /* border: 4px solid black; */
+  left: 63%;
+  transform: translateX(-50%);
+}
+
+@media screen and (max-width: 835px) {
+  .bg {
+    min-height: 40vh;
+  }
+  .TabBar {
+    gap: 1px;
+    border-top-right-radius: 8px;
+    border-top-left-radius: 8px;
+  }
+  .bookingWrapper {
+    bottom: 3rem;
+    left: 0;
+    transform: translateX(0);
+  }
+}
+@media screen and (min-width: 1210px) {
+  .bookingWrapper {
+    bottom: 2rem;
+  }
+}

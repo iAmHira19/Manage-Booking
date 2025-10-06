@@ -1,0 +1,65 @@
+.dateWidth {
+  flex: 0 0 calc(100% / 8);
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.antSelect {
+  /* border: none !important; */
+  outline: none !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  box-shadow: none;
+  height: 3rem;
+}
+
+/* .border {
+  border: 2px solid rgb(107, 114, 128) !important;
+} */
+
+.dropdownWrapper {
+  width: 22rem;
+}
+
+/* .preferedAirlines{
+  height: 1rem !important;
+} */
+
+/* .bg {
+  background: linear-gradient(
+      rgba(255, 255, 255, 0.8),
+      rgba(255, 255, 255, 0.8)
+    ),
+    url("/gif/Backgrounds/BackgroundMap-scaled.jpg");
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-width: 100%;
+} */
+
+@media screen and (max-width: 835px) {
+  .preferedAirlines {
+    height: auto;
+  }
+  .border {
+    height: auto !important;
+  }
+  .antSelect {
+    height: 2rem;
+  }
+}
+
+@media screen and (min-width: 835px) and (max-width: 1024px) {
+  .preferedAirlines {
+    height: auto;
+  }
+  .border {
+    height: auto !important;
+  }
+  .antSelect {
+    height: 2rem;
+  }
+}

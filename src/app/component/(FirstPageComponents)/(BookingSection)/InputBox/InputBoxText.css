@@ -1,0 +1,8 @@
+@media screen and (max-width: 610px) {
+  .ant-picker-panels {
+    flex-direction: column !important;
+  }
+  .ant-picker-date-panel {
+    width: 100%;
+  }
+}

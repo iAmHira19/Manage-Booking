@@ -1,0 +1,147 @@
+.item1 {
+  background: url("/img/makkah 2.jpg") rgba(0, 0, 0, 0.3);
+  background-blend-mode: darken;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  transition: 0.3s all ease-in-out;
+}
+.item1:hover {
+  background: url("/img/makkah 2.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-blend-mode: darken;
+}
+
+.item2 {
+  background: url("/img/turkey.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item2:hover {
+  background: url("/img/turkey.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+}
+
+.item3 {
+  background: url("/img/MILAN.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item3:hover {
+  background: url("/img/MILAN.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-blend-mode: darken;
+}
+
+.item4 {
+  background: url("/img/malives.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item4:hover {
+  background: url("/img/malives.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-blend-mode: darken;
+}
+
+.item5 {
+  background: url("/img/Dubai2.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item5:hover {
+  background: url("/img/Dubai2.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+}
+
+.item6 {
+  background: url("/img/NEW YORK.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item6:hover {
+  background: url("/img/NEW YORK.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+}
+
+.item7 {
+  background: url("/img/baku.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item7:hover {
+  background: url("/img/baku.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+}
+
+.item8 {
+  background: url("/img/BARCELONA.jpg") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item8:hover {
+  background: url("/img/BARCELONA.jpg") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: darken;
+}
+
+.item9 {
+  background: url("/img/11.png") rgba(0, 0, 0, 0.3);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+  transition: 0.3s all ease-in-out;
+}
+.item9:hover {
+  background: url("/img/11.png") rgba(0, 0, 0, 0.7);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: left center;
+  background-blend-mode: darken;
+}
+.container {
+  width: 100%;
+  padding: 0 6rem;
+}

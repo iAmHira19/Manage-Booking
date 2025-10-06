@@ -1,0 +1,44 @@
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.antSelect {
+  /* border: none !important; */
+  outline: none !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  box-shadow: none;
+  height: 3rem;
+}
+
+/* .border {
+  border: 1px solid rgb(145, 146, 149) !important;
+} */
+
+.dropdownWrapper {
+  width: 22rem;
+}
+
+@media screen and (min-width: 320) {
+  .bottomSearchContainer {
+    padding-left: 8px !important;
+    padding-right: 9px !important;
+  }
+}
+
+@media screen and (max-width: 835px) {
+  .dropdownWrapper {
+    width: 100%;
+  }
+  .preferedAirlines {
+    height: auto !important;
+  }
+  .border {
+    height: auto !important;
+  }
+  .container1 {
+    width: 100%;
+  }
+}

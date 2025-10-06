@@ -1,0 +1,21 @@
+.ant-input-outlined{
+    border: 1px solid blue;
+} 
+.ant-select-selector{
+    border: 1px solid blue;
+}
+.ant-select-outlined{
+    border: 1px solid blue;
+    border-radius: 8px;
+}
+.ant-select .ant-select-arrow{
+    color: black;
+}
+.ant-checkbox .ant-checkbox-inner{
+    height:20px;
+    width: 20px;
+    border: 1px solid blue;
+}
+.ant-input-search-button {
+    background-color:rgb(249, 115, 22);
+}

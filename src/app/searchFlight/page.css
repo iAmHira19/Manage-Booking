@@ -1,0 +1,6 @@
+@media (min-width: 310px) and (max-width: 520px) {
+  :where(.css-dev-only-do-not-override-240cud).ant-select-dropdown,
+  :where(.css-dev-only-do-not-override-240cud).ant-picker-dropdown {
+    left: 20px !important;
+  }
+}

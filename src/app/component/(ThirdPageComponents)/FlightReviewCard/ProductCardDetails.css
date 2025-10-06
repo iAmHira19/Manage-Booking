@@ -1,0 +1,21 @@
+.flightDetailsUsingTimeline .ant-timeline-item-label {
+  width: 50px !important;
+}
+
+.flightDetailsUsingTimeline .ant-timeline-item-content {
+  inset-inline-start: 35% !important;
+}
+
+.flightDetailsUsingTimeline .ant-timeline-item-head {
+  inset-inline-start: 28% !important;
+}
+
+.flightDetailsUsingTimeline .ant-timeline-item-tail {
+  inset-inline-start: 28% !important;
+}
+
+.clearfix::after {
+  content: "";
+  display: block;
+  clear: both;
+}

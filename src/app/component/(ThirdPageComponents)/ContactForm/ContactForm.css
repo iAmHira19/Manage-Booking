@@ -1,0 +1,59 @@
+.ant-input-wrapper {
+  height: 100%;
+  border: none;
+}
+#ContactNumber {
+  height: 56px;
+}
+
+/* ========================
+   Custom Ant Design Styles
+   ======================== */
+
+/* 1. Remove hover effect */
+.ant-input:hover,
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: inherit !important; /* Keep the original border */
+  box-shadow: none !important; /* Remove hover shadow */
+}
+
+/* 2. Remove focus effect */
+.ant-input:focus,
+.ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-select-selector:focus {
+  border-color: inherit !important; /* Keep the original border */
+  box-shadow: none !important; /* Remove focus shadow */
+}
+
+/* 3. Remove active effect */
+.ant-input:active,
+.ant-select-selector:active {
+  border-color: inherit !important; /* Keep the original border */
+  box-shadow: none !important; /* Remove active shadow */
+}
+
+/* 5. Optional: Disable hover in dropdown options */
+.ant-select-item-option:hover {
+  background-color: transparent !important; /* No hover background */
+}
+.custom-phone-input {
+  display: flex;
+  align-items: center; /* Ensures proper vertical alignment */
+  border-radius: 8px; /* Rounded corners for a modern look */
+  height: 40px; /* Adjust height for better proportions */
+  width: 100%; /* Full width */
+}
+
+/* Ensure addonBefore looks aligned */
+.custom-phone-input .ant-input-group-addon {
+  padding: 0 8px;
+  display: flex;
+  align-items: center; /* Vertical alignment */
+  background: #f5f5f5; /* Subtle background */
+  border-right: none; /* Remove extra border */
+}
+
+.custom-phone-input input {
+  border-left: none; /* Avoid double border */
+}

@@ -1,0 +1,33 @@
+.hero {
+  padding: 0 16px;
+  max-width: 1440px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+.sliderContainer {
+  overflow: hidden;
+  width: 100%;
+}
+
+.cardCover {
+  padding: 2px;
+}
+.card {
+  height: 50px;
+  width: 85px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slick-list {
+  overflow: hidden;
+}
+
+.slick-track {
+  display: flex;
+  align-items: center;
+}
+.slick-slide {
+  min-width: 0 !important;
+}
