@@ -612,8 +612,7 @@ const Page = () => {
     getCityData();
     getCountriesData();
 
-  // Initialize currency from global context (SignInStateProvider)
-  setCurrency(searchCurrencyCode || sessionStorage.getItem("currency") || "PKR");
+    setCurrency(sessionStorage.getItem("currency"));
     const flightsReviewData =
       sessionStorage.getItem("flightReviewPageData") &&
       sessionStorage.getItem("flightReviewPageData").split("___");
@@ -658,11 +657,6 @@ const Page = () => {
       abortController.abort();
     };
   }, []);
-
-  // Keep local currency state in sync with global selection
-  useEffect(() => {
-    if (searchCurrencyCode) setCurrency(searchCurrencyCode);
-  }, [searchCurrencyCode]);
 
   useEffect(() => {
     const resultIndicator = searchParams.get("resultIndicator");

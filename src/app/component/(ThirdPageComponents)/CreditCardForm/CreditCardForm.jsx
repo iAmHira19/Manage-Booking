@@ -4,6 +4,7 @@ import Image from "next/image";
 import Script from "next/script";
 import { Button, Select } from "antd";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import toast from "react-hot-toast";
 import LoadingAnim from "../loadingAnim/LoadingAnim";
 const CreditCardForm = ({
   currentStep,
@@ -45,9 +46,15 @@ const CreditCardForm = ({
   // const [payNowLoading, setPayNowLoading] = useState(false);
   const [payAniLoading, setPayAniLoading] = useState(false);
   const [isButtonHidden, setIsButtonHidden] = useState(false);
+  const embedRef = useRef(null);
   useEffect(() => {
-    setIsButtonHidden(false);
-  }, []);
+  setIsButtonHidden(false);
+  setSessionId(null);
+  configured.current = false;
+  if (embedRef.current) {
+    embedRef.current.innerHTML = '';
+  }
+}, [currentStep]);
 
   // useEffect(() => {
   //   setPayNowLoading(false);
@@ -66,6 +73,7 @@ const CreditCardForm = ({
     const newData = handleCreditCardSubmit();
     if (!newData) return;
     try {
+      // sessionId(null);
       let response = await GetReservation(newData);
       let data = JSON.parse(response);
       console.log("data from GetReservation: ", data);
@@ -119,9 +127,19 @@ const CreditCardForm = ({
     // Define global callbacks
     window.errorCallback = (error) => {
       console.error("Payment error:", JSON.stringify(error));
+      setIsButtonHidden(false);
+      setPayAniLoading(false);
+      setSessionId(null);
+      configured.current = false;
+      if (embedRef.current) embedRef.current.innerHTML = '';
     };
     window.cancelCallback = () => {
       console.log("Payment cancelled");
+      setIsButtonHidden(false);
+    setPayAniLoading(false);
+    setSessionId(null);
+    configured.current = false;
+    if (embedRef.current) embedRef.current.innerHTML = '';
     };
     window.completeCallback = (response) => {
       console.log("Payment complete:", response);
@@ -133,7 +151,7 @@ const CreditCardForm = ({
       delete window.cancelCallback;
       delete window.completeCallback;
     };
-  }, []);
+  }, [embedRef]);
 
   useEffect(() => {
     let id;
@@ -184,10 +202,15 @@ const CreditCardForm = ({
     email,
     TAC,
   ]);
+    const isTestEnv = process.env.NEXT_PUBLIC_CHECKOUT_ENV === 'test';
+    const scriptSrc = isTestEnv
+  ? 'https://test-bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js'
+  : 'https://bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js';
   return (
     <>
+    
       <Script
-        src="https://test-bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js"
+        src={scriptSrc}
         strategy="afterInteractive"
         data-error="errorCallback"
         data-cancel="cancelCallback"
@@ -422,6 +445,7 @@ const CreditCardForm = ({
           </div>
         </div>
         <div
+          ref={embedRef}
           id="embed-target"
           className="relative mt-10 w-full min-h-[50px]"
         ></div>
