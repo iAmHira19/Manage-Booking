@@ -323,7 +323,16 @@ const Navbar = ({ isMobile }) => {
             ensureCurrenciesLoaded().finally(() => setShowCurrencyModal(true));
           }}
         >
-          {searchCurrencyCodeContext || "PKR"}
+          {/* Show human-friendly symbol/description in the navbar, but the provider stores the tpCUR_CODE */}
+          {(() => {
+            // Attempt to find the selected currency in the loaded list for a nicer display.
+            const found = (currencyExchange || []).find(
+              (c) => String(c.tpCUR_CODE || "").toLowerCase() === String(searchCurrencyCodeContext || "").toLowerCase()
+            );
+            if (found) return `${found.tpCUR_SYMBOL || found.tpCUR_DESCRIPTION || found.tpCUR_CODE} `;
+            // Fallback to what provider exposes (likely a code like 'PKR')
+            return searchCurrencyCodeContext || "PKR";
+          })()}
         </li>
         <li className="hidden">
           <Link
@@ -793,9 +802,10 @@ const Navbar = ({ isMobile }) => {
                   type="currency"
                   placeholder="Select Currency"
                   value={signUpFormik.values.Currency || null}
+                  // Use tpCUR_CODE as the value so forms store the canonical code, and show symbol/description to the user
                   options={currencyExchange.map((currency) => ({
-                    value: currency.tpCUR_SYMBOL,
-                    label: `${currency.tpCUR_SYMBOL} - ${currency.tpCUR_DESCRIPTION}`,
+                    value: currency.tpCUR_CODE,
+                    label: `${currency.tpCUR_SYMBOL || currency.tpCUR_CODE} - ${currency.tpCUR_DESCRIPTION || ""}`,
                   }))}
                   name="Currency"
                   onBlur={() => signUpFormik.setFieldTouched("Currency", true)}
@@ -921,9 +931,14 @@ const Navbar = ({ isMobile }) => {
                   className="border-b border-slate-200 p-2 rounded cursor-pointer font-gotham font-light text-base py-3 hover:text-blue-900 transition-all duration-150 ease-in-out flex justify-between items-center"
                   onClick={() => {
                     setShowCurrencyModal(false);
-                    handleCurrencyChangeContext(currency.tpCUR_SYMBOL);
-                    // Show a small confirmation toast so users get immediate feedback
-                    toast.success(`Currency set to ${currency.tpCUR_SYMBOL}`, {
+                    // Use currency code (e.g., 'USD', 'PKR') as the provider expects a code to fetch exchange rates
+                    // Update provider with both code and a human-friendly symbol so UI updates instantly
+                    handleCurrencyChangeContext(
+                      currency.tpCUR_CODE || currency.tpCUR_SYMBOL,
+                      currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE
+                    );
+                    // Show a small confirmation toast with symbol/description for clarity
+                    toast.success(`Currency set to ${currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE}`, {
                       duration: 2000,
                     });
                   }}

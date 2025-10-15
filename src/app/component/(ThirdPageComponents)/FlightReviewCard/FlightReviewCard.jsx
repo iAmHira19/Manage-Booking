@@ -2,7 +2,9 @@
 import React, { useState, useMemo } from "react";
 import HorizontalTimeline from "../HorizontalTimeline/HorizontalTimeline";
 import { formatTime } from "@/utils/formatTime";
+import convertPrice from '@/utils/convertPrice';
 import { useRouter } from "next/navigation";
+import { useSignInContext } from '@/providers/SignInStateProvider';
 import {
   formatDateWithSlashWithoutYear,
   formatDateWithSlash,
@@ -13,9 +15,11 @@ import ProductCardDetails from "./ProductCardDetails";
 import "./ProductCardDetails.css";
 import { MdOutlineInfo } from "react-icons/md";
 import { Toaster } from "react-hot-toast";
+import formatCurrency from '@/utils/formatCurrency';
 const FlightReviewCard = ({
   priceStructure,
   currency,
+  exchangeRate = 1,
   showFlightDetails,
   setShowFlightDetails,
   loading,
@@ -33,6 +37,8 @@ const FlightReviewCard = ({
   const [showProductCardDetails, setShowProductCardDetails] = useState(false);
   const [detailsTitle, setDetailsTitle] = useState("");
   const router = useRouter();
+  const { searchCurrencyCode: ctxCode, searchCurrencySymbol } = useSignInContext();
+  const currencyDisplayLocal = searchCurrencySymbol || ctxCode || currency || (priceStructure && priceStructure.currency) || 'PKR';
   let BasePrice = flightReviewData.OfferListResponse.OfferID[0].Price.Base;
   let AdultPrice =
     flightReviewData.OfferListResponse.OfferID[0].Price.PriceBreakdown.find(
@@ -271,15 +277,13 @@ const FlightReviewCard = ({
                       <p className="Price w-full font-gotham font-light flex justify-between">
                         Fare Per Adult{" "}
                         <span className="text-sm font-semibold">
-                          {/* {flightReviewData &&
-                            flightReviewData.OfferListResponse.OfferID[0].Price
-                              .CurrencyCode.value}{" "} */}
-                          {currency}{" "}
-                          {/* {AdultPrice.Amount.Total.toLocaleString("en-US")} */}
-                          {Math.ceil(
-                            Number(priceStructure?.adultPriceFC ?? 0) +
-                              Number(priceStructure?.adultTaxFC ?? 0)
-                          ).toLocaleString("en-US")}
+                          {currencyDisplayLocal}{" "}
+                          {formatCurrency(
+                            convertPrice(
+                              Number(priceStructure?.adultPriceFC ?? 0) + Number(priceStructure?.adultTaxFC ?? 0),
+                              Number(exchangeRate ?? 1)
+                            )
+                          )}
                         </span>
                       </p>
                       {Number(priceStructure?.childPriceFC) +
@@ -291,11 +295,13 @@ const FlightReviewCard = ({
                             {/* {flightReviewData &&
                               flightReviewData.OfferListResponse.OfferID[0]
                                 .Price.CurrencyCode.value}{" "} */}
-                            {currency}{" "}
-                            {Math.ceil(
-                              Number(priceStructure?.childPriceFC ?? 0) +
-                                Number(priceStructure?.childTaxFC ?? 0)
-                            ).toLocaleString("en-US")}
+                            {currencyDisplayLocal}{" "}
+                            {formatCurrency(
+                              convertPrice(
+                                Number(priceStructure?.childPriceFC ?? 0) + Number(priceStructure?.childTaxFC ?? 0),
+                                Number(exchangeRate ?? 1)
+                              )
+                            )}
                           </span>
                         </p>
                       )}
@@ -308,11 +314,13 @@ const FlightReviewCard = ({
                             {/* {flightReviewData &&
                               flightReviewData.OfferListResponse.OfferID[0]
                                 .Price.CurrencyCode.value}{" "} */}
-                            {currency}{" "}
-                            {Math.ceil(
-                              Number(priceStructure?.infantPriceFC ?? 0) +
-                                Number(priceStructure?.infantTaxFC ?? 0)
-                            ).toLocaleString("en-US")}
+                            {currencyDisplayLocal}{" "}
+                            {formatCurrency(
+                              convertPrice(
+                                Number(priceStructure?.infantPriceFC ?? 0) + Number(priceStructure?.infantTaxFC ?? 0),
+                                Number(exchangeRate ?? 1)
+                              )
+                            )}
                           </span>
                         </p>
                       )}
@@ -327,12 +335,15 @@ const FlightReviewCard = ({
                           {/* {flightReviewData &&
                             flightReviewData.OfferListResponse.OfferID[0].Price
                               .CurrencyCode.value}{" "} */}
-                          {currency}{" "}
-                          {Math.ceil(
-                            (Number(priceStructure?.adultPriceFC ?? 0) * (priceStructure?.noOfAdults ?? 0))+
-                            (Number(priceStructure?.childPriceFC ?? 0) * (priceStructure?.noOfChild ?? 0))+
-                            (Number(priceStructure?.infantPriceFC ?? 0) * (priceStructure?.noOfInfant ?? 0))
-                          ).toLocaleString("en-US")}
+                          {currencyDisplayLocal}{" "}
+                          {formatCurrency(
+                            convertPrice(
+                              (Number(priceStructure?.adultPriceFC ?? 0) * (priceStructure?.noOfAdults ?? 0)) +
+                                (Number(priceStructure?.childPriceFC ?? 0) * (priceStructure?.noOfChild ?? 0)) +
+                                (Number(priceStructure?.infantPriceFC ?? 0) * (priceStructure?.noOfInfant ?? 0)),
+                              Number(exchangeRate ?? 1)
+                            )
+                          )}
                         </span>
                       </p>
                       <p className="Price w-full font-gotham font-light flex justify-between">
@@ -341,33 +352,33 @@ const FlightReviewCard = ({
                           {/* {flightReviewData &&
                             flightReviewData.OfferListResponse.OfferID[0].Price
                               .CurrencyCode.value}{" "} */}
-                          {currency}{" "}
-                          {Math.ceil(
-                            (Number(priceStructure?.adultTaxFC ?? 0) * (priceStructure?.noOfAdults ?? 0)) +
-                            (Number(priceStructure?.childTaxFC ?? 0) * (priceStructure?.noOfChild ?? 0)) +
-                            (Number(priceStructure?.infantTaxFC ?? 0) * (priceStructure?.noOfInfant ?? 0))
-                          ).toLocaleString("en-US")}
+                          {currencyDisplayLocal}{" "}
+                          {formatCurrency(
+                            convertPrice(
+                              (Number(priceStructure?.adultTaxFC ?? 0) * (priceStructure?.noOfAdults ?? 0)) +
+                                (Number(priceStructure?.childTaxFC ?? 0) * (priceStructure?.noOfChild ?? 0)) +
+                                (Number(priceStructure?.infantTaxFC ?? 0) * (priceStructure?.noOfInfant ?? 0)),
+                              Number(exchangeRate ?? 1)
+                            )
+                          )}
                         </span>
                       </p>
                       <p className="Price w-full font-gotham font-light flex justify-between">
                         Service Fee{" "}
                         <span className="text-sm font-semibold">
-                          {currency}{" "}
-                          {Math.ceil(
-                            Number(priceStructure?.serviceFeeFC ?? 0)
-                          ).toLocaleString("en-US")}
+                          {currencyDisplayLocal}{" "}
+                          {formatCurrency(
+                            convertPrice(Number(priceStructure?.serviceFeeFC ?? 0), Number(exchangeRate ?? 1))
+                          )}
                         </span>
                       </p>
                       <p className="Price w-full font-gotham font-light flex justify-between">
                         Grand total{" "}
                         <span className="text-sm font-semibold">
-                          {/* {flightReviewData &&
-                            flightReviewData.OfferListResponse.OfferID[0].Price
-                              .CurrencyCode.value}{" "} */}
-                          {currency}{" "}
-                          {Math.ceil(
-                            Number(priceStructure?.totalPriceFC ?? 0)
-                          ).toLocaleString("en-US")}
+                          {currencyDisplayLocal}{" "}
+                          {formatCurrency(
+                            convertPrice(Number(priceStructure?.totalPriceFC ?? 0), Number(exchangeRate ?? 1))
+                          )}
                         </span>
                       </p>
                     </div>

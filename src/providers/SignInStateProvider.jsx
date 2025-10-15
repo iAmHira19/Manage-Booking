@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, createContext, useContext, useEffect } from "react";
+import { useCurrencyApi } from "@/utils/getCurrencyForCurrencyApi";
 
 const signInContext = createContext();
 
@@ -9,9 +10,12 @@ export const SignInContextProvider = ({ children }) => {
   const [userId, setUserId] = useState("Public");
   const [userGroup, setUserGroup] = useState(null);
   const [searchCurrencyCode, setSearchCurrencyCode] = useState(null);
+  const [searchCurrencySymbol, setSearchCurrencySymbol] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalType, setModalType] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(1);
+  const { getCurrencyApi } = useCurrencyApi();
 
   // Initialize client-side data after hydration
   useEffect(() => {
@@ -22,6 +26,8 @@ export const SignInContextProvider = ({ children }) => {
       const storedSignIn = sessionStorage.getItem("signIn");
       const storedCurrencySession = sessionStorage.getItem("currency");
       const storedCurrencyLocal = localStorage.getItem("currency");
+      const storedCurrencySymbolSession = sessionStorage.getItem("currencySymbol");
+      const storedCurrencySymbolLocal = localStorage.getItem("currencySymbol");
 
       if (storedSignIn) {
         setIsSignedIn(storedSignIn === "true");
@@ -31,16 +37,60 @@ export const SignInContextProvider = ({ children }) => {
       // then fallback to localStorage for cross-tab persistence, otherwise default to PKR.
       const initialCurrency =
         storedCurrencySession || storedCurrencyLocal || "PKR";
+      const initialCurrencySymbol =
+        storedCurrencySymbolSession || storedCurrencySymbolLocal || "PKR";
       // Ensure both storages are in sync
       try {
         sessionStorage.setItem("currency", initialCurrency);
         localStorage.setItem("currency", initialCurrency);
+        sessionStorage.setItem("currencySymbol", initialCurrencySymbol);
+        localStorage.setItem("currencySymbol", initialCurrencySymbol);
       } catch (e) {
         // ignore storage errors
       }
       setSearchCurrencyCode(initialCurrency);
+      setSearchCurrencySymbol(initialCurrencySymbol);
     }
   }, []);
+
+  // Fetch exchange rate whenever the selected currency changes.
+  useEffect(() => {
+    let mounted = true;
+    async function fetchRate() {
+      if (!searchCurrencyCode) return;
+      try {
+        const resp = await getCurrencyApi(searchCurrencyCode);
+        let parsed = null;
+        if (!resp) parsed = null;
+        else if (typeof resp === "string") {
+          try {
+            parsed = JSON.parse(resp);
+          } catch (e) {
+            parsed = null;
+            console.debug("SignInStateProvider: failed to parse exchange payload", e, resp);
+          }
+        } else parsed = resp;
+
+        const rates = parsed?.objExchangeRate || parsed?.objExchRate || parsed?.objExchange || [];
+        const latest = Array.isArray(rates) && rates.length > 0 ? rates[0] : null;
+        const rate = latest && (latest.tpEXR_RATE || latest.rate || latest.tpEXR_RATE_TX) ? Number(latest.tpEXR_RATE || latest.rate || latest.tpEXR_RATE_TX) : 1;
+        // Debug: log shape and chosen rate so we can validate whether rate is base-per-target or target-per-base
+        try {
+          console.debug("SignInStateProvider: fetched exchange payload:", { criteria: searchCurrencyCode, parsed, rates, latest, rate });
+        } catch (e) {
+          // ignore
+        }
+        if (mounted) setExchangeRate(!isNaN(rate) && rate > 0 ? rate : 1);
+      } catch (err) {
+        console.error("SignInStateProvider: failed to fetch exchange rate", err);
+        if (mounted) setExchangeRate(1);
+      }
+    }
+    fetchRate();
+    return () => {
+      mounted = false;
+    };
+  }, [searchCurrencyCode]);
 
   const signInFn = () => {
     if (typeof window !== "undefined") {
@@ -56,15 +106,24 @@ export const SignInContextProvider = ({ children }) => {
     }
   };
 
-  const handleCurrencyChangeFn = (curr_Code) => {
+  const handleCurrencyChangeFn = (curr_Code, curr_Symbol) => {
     if (typeof window !== "undefined") {
       try {
         sessionStorage.setItem("currency", curr_Code);
         localStorage.setItem("currency", curr_Code);
+        if (typeof curr_Symbol !== 'undefined') {
+          sessionStorage.setItem('currencySymbol', curr_Symbol);
+          localStorage.setItem('currencySymbol', curr_Symbol);
+        }
       } catch (e) {
         // ignore storage errors
       }
+      console.debug('SignInStateProvider: handleCurrencyChangeFn called', { curr_Code, curr_Symbol });
       setSearchCurrencyCode(curr_Code);
+      if (typeof curr_Symbol !== 'undefined') {
+        setSearchCurrencySymbol(curr_Symbol);
+        console.debug('SignInStateProvider: updated searchCurrencySymbol ->', curr_Symbol);
+      }
     }
   };
 
@@ -82,7 +141,10 @@ export const SignInContextProvider = ({ children }) => {
     setUserGroup,
   searchCurrencyCode,
     setSearchCurrencyCode,
+    searchCurrencySymbol,
+    setSearchCurrencySymbol,
     handleCurrencyChangeFn,
+    exchangeRate,
     isModalVisible,
     setIsModalVisible,
     modalType,

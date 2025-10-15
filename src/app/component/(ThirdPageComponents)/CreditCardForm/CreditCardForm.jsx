@@ -4,6 +4,7 @@ import Image from "next/image";
 import Script from "next/script";
 import { Button, Select } from "antd";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { createPaymentSession } from "@/utils/createPaymentSession";
 import toast from "react-hot-toast";
 import LoadingAnim from "../loadingAnim/LoadingAnim";
 const CreditCardForm = ({
@@ -46,15 +47,16 @@ const CreditCardForm = ({
   // const [payNowLoading, setPayNowLoading] = useState(false);
   const [payAniLoading, setPayAniLoading] = useState(false);
   const [isButtonHidden, setIsButtonHidden] = useState(false);
+  const [reservationError, setReservationError] = useState(null);
   const embedRef = useRef(null);
   useEffect(() => {
-  setIsButtonHidden(false);
-  setSessionId(null);
-  configured.current = false;
-  if (embedRef.current) {
-    embedRef.current.innerHTML = '';
-  }
-}, [currentStep]);
+    setIsButtonHidden(false);
+    setSessionId(null);
+    configured.current = false;
+    if (embedRef.current) {
+      embedRef.current.innerHTML = "";
+    }
+  }, [currentStep]);
 
   // useEffect(() => {
   //   setPayNowLoading(false);
@@ -69,33 +71,136 @@ const CreditCardForm = ({
   };
   // let [apiCallCheck, setApiCallCheck] = useState(false);
   const [sessionId, setSessionId] = useState(null);
-  const makeReservationCall = async () => {
-    const newData = handleCreditCardSubmit();
-    if (!newData) return;
-    try {
-      // sessionId(null);
-      let response = await GetReservation(newData);
-      let data = JSON.parse(response);
-      console.log("data from GetReservation: ", data);
+  // const makeReservationCall = async () => {
+  //   const newData = handleCreditCardSubmit();
+  //   if (!newData) return;
+  //   setReservationError(null);
+  //   try {
+  //     // sessionId(null);
+  //     let response = await GetReservation(newData);
+  //     try{
+  //       data = JSON.parse(response);
+  //     console.log("data from GetReservation: ", data);
+  //     }
+  //     catch (parseError) {
+  //     // If not JSON, treat as plain text error
+  //     throw new Error(response); // Use the raw text as error message
+  //   }
+  //     // let data = JSON.parse(response);
+  //     // console.log("data from GetReservation: ", data);
 
-      // Extract PNR from Receipt where source === "1G"
-      const gdsReceipt = data?.ReservationResponse?.Reservation?.Receipt?.find(
-        (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
-      );
-      const pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
+  //     // Extract PNR from Receipt where source === "1G"
+  //     const gdsReceipt = data?.ReservationResponse?.Reservation?.Receipt?.find(
+  //       (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
+  //     );
+  //     const pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
 
-      if (pnr) {
-        sessionStorage.setItem("reservationPNR", pnr);
-      } else {
-        console.warn("PNR not found in GetReservation response");
+  //     if (pnr) {
+  //       sessionStorage.setItem("reservationPNR", pnr);
+  //     } else {
+  //       console.warn("PNR not found in GetReservation response");
+  //     }
+
+  //     setSessionId(data.sessionId);
+  //   } catch (error) {
+  //     // console.error("Error fetching reservation:", error.message, error);
+  //     setReservationError(error.message); // Set error message
+  //     setIsButtonHidden(false);
+  //     setPayAniLoading(false);
+  //   }
+  // };
+
+  // Update makeReservationCall to handle both JSON and text responses
+const makeReservationCall = async () => {
+  // Validate and prepare data first
+  const newData = handleCreditCardSubmit();
+  console.log("Payload to backend: " , JSON.stringify(newData,null,2));
+  if (!newData) {
+    // Validation failed; ensure UI remains enabled
+    setIsButtonHidden(false);
+    setPayAniLoading(false);
+    return;
+  }
+
+  // Only hide the button and show animation after validation passes
+  setIsButtonHidden(true);
+  setPayAniLoading(true);
+  setReservationError(null);
+
+  // Preflight: ensure WBKey and Traveler IDs exist to avoid backend errors
+  const missingReasons = [];
+  if (!hasWBKey) missingReasons.push("WBKey");
+  if (!hasTravelerIds) missingReasons.push("traveler IDs");
+  if (missingReasons.length) {
+    setReservationError(
+      `Missing ${missingReasons.join(", ")}. Please complete the Passengers step and try again.`
+    );
+    setIsButtonHidden(false);
+    setPayAniLoading(false);
+    return;
+  }
+
+  try {
+    // 1) Create or confirm reservation as before (kept for PNR extraction)
+    const reservationData = await GetReservation(newData);
+    console.log("data from GetReservation: ", reservationData);
+    const gdsReceipt = reservationData?.ReservationResponse?.Reservation?.Receipt?.find(
+      (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
+    );
+    const pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
+    if (pnr) sessionStorage.setItem("reservationPNR", pnr);
+
+    // 2) If reservation already returned a session id, use it directly
+    let session =
+      reservationData?.sessionId ||
+      reservationData?.SessionId ||
+      reservationData?.session?.id ||
+      null;
+
+    if (!session) {
+      // Try to create a payment session via dedicated endpoint(s)
+      const baseUri = process.env.NEXT_PUBLIC_BASE_URI;
+      const paymentPayload = {
+        PNR: pnr,
+        amount: newData?.Payment?.amount,
+        currency: newData?.Payment?.currency,
+        orderId: newData?.Payment?.orderId,
+        orderHint: newData?.Payment?.orderHint,
+        description: newData?.Payment?.description,
+        Customer: newData?.Customer,
+        Billing: newData?.billingInfo,
+        Travelers: newData?.travelers,
+        WBKey:
+          newData?.WBKey ||
+          (typeof window !== 'undefined'
+            ? sessionStorage.getItem('WBKey')
+            : undefined),
+        UserId: newData?.UserID,
+        ReturnURL: newData?.ReturnURL,
+      };
+
+      const sessionResp = await createPaymentSession(paymentPayload, baseUri);
+      if (!sessionResp.success) {
+        const attempted = sessionResp.attempted?.join(', ') || '';
+        const suggestion = sessionResp.suggestion || '';
+        throw new Error(
+          `${sessionResp.error}${attempted ? ` | Tried: ${attempted}` : ''}${
+            suggestion ? ` | ${suggestion}` : ''
+          }`
+        );
       }
-
-      setSessionId(data.sessionId);
-    } catch (error) {
-      console.log("Error fetching reservation");
+      session = sessionResp.sessionId;
     }
-  };
 
+    setSessionId(session);
+  } catch (error) {
+    console.error("Error fetching reservation:", error?.message || error, error);
+    setReservationError(error?.message || String(error));
+    // Reset UI so user can try again
+    setIsButtonHidden(false);
+    setPayAniLoading(false);
+  }
+};
   const scriptLoaded = useRef(false);
   const configured = useRef(false);
 
@@ -131,15 +236,15 @@ const CreditCardForm = ({
       setPayAniLoading(false);
       setSessionId(null);
       configured.current = false;
-      if (embedRef.current) embedRef.current.innerHTML = '';
+      if (embedRef.current) embedRef.current.innerHTML = "";
     };
     window.cancelCallback = () => {
       console.log("Payment cancelled");
       setIsButtonHidden(false);
-    setPayAniLoading(false);
-    setSessionId(null);
-    configured.current = false;
-    if (embedRef.current) embedRef.current.innerHTML = '';
+      setPayAniLoading(false);
+      setSessionId(null);
+      configured.current = false;
+      if (embedRef.current) embedRef.current.innerHTML = "";
     };
     window.completeCallback = (response) => {
       console.log("Payment complete:", response);
@@ -178,6 +283,12 @@ const CreditCardForm = ({
       TAC
   );
 
+  // Ensure required reservation prerequisites exist before enabling Pay Now
+  const hasWBKey = Boolean(flightsReviewJsonFinal?.WBKey);
+  const hasTravelerIds = Array.isArray(flightsReviewJsonFinal?.travelers)
+    && flightsReviewJsonFinal.travelers.every((t) => t?.Traveler?.Identifier?.value);
+  const isReservationReady = hasWBKey && hasTravelerIds;
+
   useEffect(() => {
     console.log("Form values:", {
       firstName,
@@ -202,13 +313,12 @@ const CreditCardForm = ({
     email,
     TAC,
   ]);
-    const isTestEnv = process.env.NEXT_PUBLIC_CHECKOUT_ENV === 'test';
-    const scriptSrc = isTestEnv
-  ? 'https://test-bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js'
-  : 'https://bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js';
+  const isTestEnv = process.env.NEXT_PUBLIC_CHECKOUT_ENV === "test";
+  const scriptSrc = isTestEnv
+    ? "https://test-bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js"
+    : "https://bankalfalah.gateway.mastercard.com/static/checkout/checkout.min.js";
   return (
     <>
-    
       <Script
         src={scriptSrc}
         strategy="afterInteractive"
@@ -444,33 +554,46 @@ const CreditCardForm = ({
             </div>
           </div>
         </div>
-        <div
+        {/* <div
           ref={embedRef}
           id="embed-target"
           className="relative mt-10 w-full min-h-[50px]"
-        ></div>
+        ></div> */}
+        {reservationError ? (
+          <div
+            className="relative mt-10 w-full min-h-[50px] bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
+            role="alert"
+          >
+            <strong className="font-bold">Error:</strong>
+            <span className="block sm:inline"> {reservationError}</span>
+          </div>
+        ) : (
+          <div
+            ref={embedRef}
+            id="embed-target"
+            className="relative mt-10 w-full min-h-[50px]"
+          ></div>
+        )}
         <div className="flex items-center justify-center">
           {!isButtonHidden && (
             <Button
               type="primary"
-              disabled={!isFormValid}
+              disabled={!isFormValid || !isReservationReady}
               className={
                 "!bg-orange-500 text-white font-gotham font-medium px-6 py-3 rounded"
               }
-              onClick={() => {
-                if (!isFormValid) {
-                  toast.error(
-                    "Please fill all fields and accept Terms & Conditions."
-                  );
-                  return;
-                }
-                setIsButtonHidden(true);
-                setPayAniLoading(true);
-                makeReservationCall();
+              onClick={async () => {
+                // Delegate validation and UI state management to makeReservationCall
+                await makeReservationCall();
               }}
             >
               Pay Now
             </Button>
+          )}
+          {!isReservationReady && (
+            <div className="mt-2 text-xs text-red-600 text-center">
+              Please complete the Passengers step to generate traveler IDs and session (WBKey).
+            </div>
           )}
           <DotLottieReact
             src="https://lottie.host/749564f5-bb57-42ee-a7af-b27d3b0226af/SO1a5GkcWE.lottie"

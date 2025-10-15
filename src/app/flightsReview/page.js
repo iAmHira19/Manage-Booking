@@ -38,8 +38,8 @@ import {
 import { convertMinutesToHours } from "@/utils/convertMinutesToHours";
 import { useTravelersID } from "@/utils/getTravelersId";
 import { useGetTicket } from "@/utils/getTicket";
-import { getCountries } from "@/utils/getCountries";
 import { useSignInContext } from "@/providers/SignInStateProvider";
+import { getCountries } from "@/utils/getCountries";
 import { getCity } from "@/utils/getCity";
 import useAirports from "@/hooks/useAirports";
 import { useGetReservation } from "@/utils/getReservation";
@@ -55,11 +55,12 @@ const Page = () => {
     useGetReservation();
   const searchParams = useSearchParams();
   const [cities, setCities] = useState(null);
-  const { userId, searchCurrencyCode } = useSignInContext();
+  const { userId, searchCurrencyCode, exchangeRate, searchCurrencySymbol } = useSignInContext();
   const [reactToPrintFn, setReactToPrintFn] = useState(null);
   const [airports, setAirports] = useState([]);
   const { data: AirportData } = useAirports("none");
   const [currency, setCurrency] = useState("PKR");
+  const currencyDisplay = searchCurrencySymbol || searchCurrencyCode || currency;
   const [priceStructure, setPriceStructure] = useState({});
   const [flightReviewData, setFlightReviewData] = useState(null);
   const [travelersData, setTravelersData] = useState({});
@@ -370,13 +371,20 @@ const Page = () => {
         });
         return;
       }
-      setPhone(
-        `${contactDetails.countryAccessCode}${contactDetails.phoneNumber}`
-      );
+      // Normalize phone: avoid double country code and strip non-digits
+      const rawNumber = String(contactDetails.phoneNumber || "").replace(/\D/g, "");
+      const cc = String(contactDetails.countryAccessCode || "").replace(/\D/g, "");
+      const trimmedNumber = rawNumber.startsWith(cc)
+        ? rawNumber.slice(cc.length)
+        : rawNumber.replace(/^0+/, "");
+      const normalizedPhone = `${cc}${trimmedNumber}`;
+      setPhone(normalizedPhone);
       setBillingInfo((prev) => ({
         ...prev,
-        phone: `${contactDetails.countryAccessCode}${contactDetails.phoneNumber}`,
+        phone: normalizedPhone,
       }));
+      // Also normalize the contactDetails phone used in Traveler Telephone (store WITHOUT country code)
+      contactDetails.phoneNumber = trimmedNumber;
       const jsonOutput = travelersArray.map((traveler, index) => {
         const travelerData = travelersData[index] || {};
         return {
@@ -522,11 +530,32 @@ const Page = () => {
     }
     let newData = null;
     setFlightsReviewJsonFinal((prev) => {
+      const totalPriceFC = Number(priceStructure?.totalPriceFC ?? 0);
+      const computedAmount = Math.ceil(totalPriceFC);
+      const amountCurrency = currencyDisplay || priceStructure?.currency || "PKR";
       newData = {
         ...prev,
         billingInfo,
         UserID: userId,
-        ReturnURL: "http://localhost:3000/flightsReview",
+        ReturnURL: `${window?.location?.origin || ''}/flightsReview`,
+        Payment: {
+          amount: computedAmount,
+          currency: amountCurrency,
+          // optional metadata often used by gateways
+          orderHint: `${Date.now()}-${userId || 'guest'}`,
+          orderId: `${Date.now()}`,
+          description: "Flight reservation payment",
+        },
+        Customer: {
+          firstName: billingInfo?.firstName || firstName || "",
+          lastName: billingInfo?.lastName || lastName || "",
+          email: billingInfo?.email || "",
+          phone: billingInfo?.phone || "",
+          addressLine1: billingInfo?.addressLine1 || billingAddress || "",
+          city: billingInfo?.city || city || "",
+          country: billingInfo?.country || country || "",
+          postalCode: billingInfo?.postalCode || "",
+        },
       };
       sessionStorage.setItem("UserID", userId);
       sessionStorage.setItem("flightsReviewJsonFinal", JSON.stringify(newData));
@@ -543,7 +572,11 @@ const Page = () => {
       });
       return null;
     }
+    // Mark payment initiated and immediately show the payment step so the
+    // CreditCardForm is visible right away.
     setIsPaymentInitiated(true);
+    // setCurrentStep(2);
+    // sessionStorage.setItem("currentStage", "2");
     return newData;
   };
 
@@ -1321,7 +1354,8 @@ const Page = () => {
           {flightLegs && flightLegs.length > 0 ? (
             <FlightReviewCard
               priceStructure={priceStructure}
-              currency={currency}
+              currency={currencyDisplay}
+              exchangeRate={exchangeRate}
               showFlightDetails={showFlightDetails}
               setShowFlightDetails={setShowFlightDetails}
               loading={loading}
@@ -1387,88 +1421,14 @@ const Page = () => {
             flightCriteria={flightsReviewJsonFinal?.flightCriteria}
           ></ContactForm>
         </div>
-        <div className={`hidden p-4 {currentStep === 2 ? "block" : "hidden"}`}>
-          <div className="optionsPart w-full px-10 pt-16">
-            <h2 className="text-4xl pl-3 font-gotham font-normal hidden">
-              Enhance your travel experience
-            </h2>
-            <div className="cardsPart grid grid-cols-4 justify-center items-center gap-5">
-              <div className="cursor-pointer" onClick={showSeatMapModal}>
-                <Card
-                  Title="Select Seat"
-                  Fare="Fares Starting PKR 233,434/-"
-                  Image="/img/FirstImg.jpg"
-                  cardWidth="w-full"
-                />
-              </div>
-              <div className="cursor-pointer" onClick={showMealModal}>
-                <Card
-                  Title="Select Meal"
-                  Fare="Fares Starting PKR 233,434/-"
-                  Image="/img/FirstImg.jpg"
-                  cardWidth="w-full"
-                />
-              </div>
-              <div className="cursor-pointer" onClick={showDisabilityModal}>
-                <Card
-                  Title="Special disability services"
-                  Fare="Fares Starting PKR 233,434/-"
-                  Image="/img/FirstImg.jpg"
-                  cardWidth="w-full"
-                />
-              </div>
-            </div>
-          </div>
-          {/* FlightSeatMap */}
-          <Modal
-            title="Select Your Seat"
-            open={seatMapOpen}
-            onOk={handleSeatMapOk}
-            loading={confirmSeatMapLoading}
-            width={"90%"}
-            onCancel={handleSeatMapCancel}
-          >
-            <div>{seatMapModalLayout}</div>
-          </Modal>
-          {/* <Meal Options /> */}
-          <Modal
-            title="Select Your Meal"
-            open={mealOpen}
-            onOk={handleMealOk}
-            loading={confirmMealLoading}
-            width={"90%"}
-            onCancel={handleMealCancel}
-          >
-            <div>{mealModalLayout}</div>
-          </Modal>
-          <Modal
-            title="Select Your Disability Service"
-            open={disabilityOpen}
-            onOk={handleDisabilityOk}
-            loading={confirmDisabilityLoading}
-            width={"90%"}
-            onCancel={handleDisabilityCancel}
-          >
-            <div>{disabilityModalLayout}</div>
-          </Modal>
-          <Modal
-            title="Select Your Disability Service"
-            open={disabilityOpen}
-            onOk={handleDisabilityOk}
-            loading={confirmDisabilityLoading}
-            width={"90%"}
-            onCancel={handleDisabilityCancel}
-          >
-            <div>{disabilityModalLayout}</div>
-          </Modal>
-        </div>
-        <div className={`p-4 ${currentStep === 2 ? "block" : "hidden"}`}>
+        
+  <div className={`p-4 transition-all duration-300 ease-in-out ${currentStep === 2 ? 'opacity-100 translate-y-0 block' : 'opacity-0 -translate-y-3 pointer-events-none h-0 overflow-hidden'}`}>
           <CreditCardForm
             isPaymentInitiated={isPaymentInitiated}
             flightsReviewJsonFinal={flightsReviewJsonFinal}
             handleCreditCardSubmit={handleCreditCardSubmit}
             priceStructure={priceStructure}
-            currency={currency}
+            currency={currencyDisplay}
             currentStep={currentStep}
             GetReservation={GetReservation}
             loadingTicket={loadingTicket}

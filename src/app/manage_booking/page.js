@@ -1,7 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ManageBooking() {
+  const router = useRouter();
+
   const [lastName, setLastName] = useState("");
   const [reference, setReference] = useState("");
   const [otp, setOtp] = useState("");
@@ -97,6 +100,31 @@ const handleVerifyOtp = async () => {
     console.log("Backend response after removing quotes:", `"${data}"`);
 
     // Handle response
+    // The backend returns simple string codes or messages. Treat success as any response
+    // containing the word 'success' or the exact success message. Otherwise map known errors.
+    const lower = data.toLowerCase();
+    if (lower.includes("success") || lower.includes("validated")) {
+      // Persist minimal booking context for the details page to consume.
+      try {
+        sessionStorage.setItem(
+          "manageBookingContext",
+          JSON.stringify({ bookingId: reference, lastName })
+        );
+      } catch (e) {
+        // ignore session storage errors in restricted environments
+      }
+
+      setOtpSent(false);
+      console.debug("OTP verified, navigating to booking details");
+      try {
+        router.push("/manage_booking/booking_details");
+      } catch (e) {
+        // fallback
+        window.location.href = "/manage_booking/booking_details";
+      }
+      return;
+    }
+
     switch (data) {
       case "InvalidInputError":
         setError("Please enter valid reference number and last name.");
@@ -106,10 +134,6 @@ const handleVerifyOtp = async () => {
         break;
       case "InvalidOTPError":
         setError("Invalid or expired OTP. Please try again.");
-        break;
-      case "OTP validated successfully.":
-        alert("Booking retrieved successfully!");
-        setOtpSent(false); // hide OTP input
         break;
       default:
         console.error("Unexpected backend response:", data);

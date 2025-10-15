@@ -5,6 +5,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useTicketDocument } from "@/utils/getTicketDocument";
 import { useSignInContext } from "@/providers/SignInStateProvider";
+import formatCurrency from '@/utils/formatCurrency';
+import convertPrice from '@/utils/convertPrice';
 
 const GetTicket = ({
   TicketResponse,
@@ -17,7 +19,7 @@ const GetTicket = ({
   const [airports, setAirports] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const { getTicketDocument } = useTicketDocument();
-  const { userId } = useSignInContext();
+  const { userId, exchangeRate, searchCurrencySymbol, searchCurrencyCode } = useSignInContext();
   let [GDSBookingRef, setGDSBookingRef] = useState(null);
   const UIRef = useRef(null);
 
@@ -59,6 +61,31 @@ const GetTicket = ({
     };
     if (airports && airports.length === 0) getData();
   }, [AirportData]);
+
+  // Debug: log current currency context and converted totals to help diagnose wrong currency display
+  useEffect(() => {
+    try {
+      const subtotalBase =
+        Number(priceStructure?.adultPriceFC ?? 0) * (priceStructure?.noOfAdults ?? 0) +
+        Number(priceStructure?.childPriceFC ?? 0) * (priceStructure?.noOfChild ?? 0) +
+        Number(priceStructure?.infantPriceFC ?? 0) * (priceStructure?.noOfInfant ?? 0);
+      const taxesBase =
+        Number(priceStructure?.adultTaxFC ?? 0) * (priceStructure?.noOfAdults ?? 0) +
+        Number(priceStructure?.childTaxFC ?? 0) * (priceStructure?.noOfChild ?? 0) +
+        Number(priceStructure?.infantTaxFC ?? 0) * (priceStructure?.noOfInfant ?? 0) +
+        Number(priceStructure?.serviceFeeFC ?? 0);
+      const totalBase = Number(priceStructure?.totalPriceFC ?? 0);
+      console.debug('GetTicket: currency context', { searchCurrencyCode, searchCurrencySymbol, exchangeRate });
+      console.debug('GetTicket: bases', { subtotalBase, taxesBase, totalBase });
+      console.debug('GetTicket: converted', {
+        subtotal: convertPrice(subtotalBase, Number(exchangeRate ?? 1)),
+        taxes: convertPrice(taxesBase, Number(exchangeRate ?? 1)),
+        total: convertPrice(totalBase, Number(exchangeRate ?? 1)),
+      });
+    } catch (e) {
+      // ignore
+    }
+  }, [exchangeRate, searchCurrencySymbol, searchCurrencyCode, priceStructure]);
 
   useEffect(() => {
     if (setGeneratedPDFBase64) {
@@ -492,7 +519,7 @@ const GetTicket = ({
           }
           const flightSegments = product?.FlightSegment || [];
 
-          return flightSegments?.map(async (segment, segmentIndex) => {
+        return flightSegments?.map((segment, segmentIndex) => {
             const flight = segment?.Flight;
             if (!flight) return null;
             let depMatchedAirport = airports?.filter(
@@ -673,30 +700,28 @@ const GetTicket = ({
               <div>
                 <p className="text-xs text-gray-500 mb-1">FARE</p>
                 <p className="font-semibold text-xs">
-                  {priceStructure?.currency}{" "}
-                  {(
-                    Number(priceStructure?.adultPriceFC ?? 0) *
-                      (priceStructure?.noOfAdults ?? 0) +
-                    Number(priceStructure?.childPriceFC ?? 0) *
-                      (priceStructure?.noOfChild ?? 0) +
-                    Number(priceStructure?.infantPriceFC ?? 0) *
-                      (priceStructure?.noOfInfant ?? 0)
-                  ).toLocaleString("en-US") || "N/A"}
+                  {(searchCurrencySymbol || searchCurrencyCode || priceStructure?.currency) + " "}
+                  {(() => {
+                    const subtotalBase =
+                      Number(priceStructure?.adultPriceFC ?? 0) * (priceStructure?.noOfAdults ?? 0) +
+                      Number(priceStructure?.childPriceFC ?? 0) * (priceStructure?.noOfChild ?? 0) +
+                      Number(priceStructure?.infantPriceFC ?? 0) * (priceStructure?.noOfInfant ?? 0);
+                    return formatCurrency(convertPrice(subtotalBase, Number(exchangeRate ?? 1))) || "N/A";
+                  })()}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">TAXES/FEES/CHARGES</p>
                 <p className="font-semibold text-xs">
-                  {priceStructure?.currency}{" "}
-                  {(
-                    Number(priceStructure?.adultTaxFC ?? 0) *
-                      (priceStructure?.noOfAdults ?? 0) +
-                    Number(priceStructure?.childTaxFC ?? 0) *
-                      (priceStructure?.noOfChild ?? 0) +
-                    Number(priceStructure?.infantTaxFC ?? 0) *
-                      (priceStructure?.noOfInfant ?? 0) +
-                    Number(priceStructure?.serviceFeeFC ?? 0)
-                  ).toLocaleString("en-US") || "N/A"}
+                  {(searchCurrencySymbol || searchCurrencyCode || priceStructure?.currency) + " "}
+                  {(() => {
+                    const taxesBase =
+                      Number(priceStructure?.adultTaxFC ?? 0) * (priceStructure?.noOfAdults ?? 0) +
+                      Number(priceStructure?.childTaxFC ?? 0) * (priceStructure?.noOfChild ?? 0) +
+                      Number(priceStructure?.infantTaxFC ?? 0) * (priceStructure?.noOfInfant ?? 0) +
+                      Number(priceStructure?.serviceFeeFC ?? 0);
+                    return formatCurrency(convertPrice(taxesBase, Number(exchangeRate ?? 1))) || "N/A";
+                  })()}
                 </p>
               </div>
             </div>
@@ -704,8 +729,8 @@ const GetTicket = ({
               <div>
                 <p className="text-xs text-gray-500 mb-1">TOTAL</p>
                 <p className="font-semibold text-xs">
-                  {priceStructure?.currency}{" "}
-                  {Number(priceStructure?.totalPriceFC)?.toLocaleString() ||
+                  {(searchCurrencySymbol || searchCurrencyCode || priceStructure?.currency) + " "}
+                  {formatCurrency(Number(convertPrice((priceStructure?.totalPriceFC ?? 0), Number(exchangeRate ?? 1)))) ||
                     "N/A"}
                 </p>
               </div>

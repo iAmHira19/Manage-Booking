@@ -33,7 +33,7 @@ const Page = () => {
   const { RangePicker } = DatePicker;
   const { MiniButton, Travel, TravelersCompo, ClassCompo, InputBoxText } =
     components;
-  const { searchCurrencyCode } = useSignInContext();
+  const { searchCurrencyCode, exchangeRate } = useSignInContext();
   // const [showFlightDetails, setShowFlightDetails] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [showMiniFilters, setShowMiniFilters] = useState(false);
@@ -416,6 +416,7 @@ const Page = () => {
     );
   };
   // APIs being called
+
   useEffect(() => {
     const abortController = new AbortController();
     const fetchData = async () => {
@@ -1526,22 +1527,25 @@ const Page = () => {
                               arrAirportCode={dataItem.arrAirportCode}
                               stops={dataItem.stops}
                               meal={dataItem.meal}
-                              totalPrice={
+                              // Pass base numeric totals (unformatted). Conversion to selected currency
+                              // will be handled by child components using `exchangeRate`.
+                              totalPriceBase={
                                 dataItem?.brands &&
                                 dataItem?.brands[0]?.keyData === "Root0"
                                   ? Math.ceil(
                                       Number(
                                         dataItem?.priceStructure?.totalPriceFC
-                                      ) 
-                                    ).toLocaleString("en-US")
+                                      )
+                                    )
                                   : Math.ceil(
                                       Number(
                                         dataItem?.brands &&
                                           dataItem?.brands[0]?.priceStructure
                                             ?.totalPriceFC
-                                      ) 
-                                    ).toLocaleString("en-US")
+                                      )
+                                    )
                               }
+                              exchangeRate={exchangeRate}
                             />
                           )}
                         </div>
@@ -1617,24 +1621,23 @@ const Page = () => {
                             arrAirportCode={dataItem.arrAirportCode}
                             stops={dataItem.stops}
                             meal={dataItem.meal}
-                            totalPrice={
+                            totalPriceBase={
                               dataItem?.brands &&
                               dataItem?.brands[0]?.keyData === "Root0"
                                 ? Math.ceil(
                                     Number(
                                       dataItem?.priceStructure?.totalPriceFC
-                                    ) -
-                                      usersSelectedPrice
-                                  ).toLocaleString("en-US")
+                                    ) - usersSelectedPrice
+                                  )
                                 : Math.ceil(
                                     Number(
                                       dataItem?.brands &&
                                         dataItem?.brands[0]?.priceStructure
                                           ?.totalPriceFC
-                                    ) -
-                                      usersSelectedPrice
-                                  ).toLocaleString("en-US")
+                                    ) - usersSelectedPrice
+                                  )
                             }
+                            exchangeRate={exchangeRate}
                           />
                         )}
                       </div>

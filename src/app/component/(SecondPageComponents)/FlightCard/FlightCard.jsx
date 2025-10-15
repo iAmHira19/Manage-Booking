@@ -1,6 +1,9 @@
 "use client";
 import React, { useState } from "react";
+import { useSignInContext } from '@/providers/SignInStateProvider';
 import FlightCardLogo from "@/app/component/(SecondPageComponents)/FlightCardLogo/FlightCardLogo";
+import formatCurrency from '@/utils/formatCurrency';
+import convertPrice from '@/utils/convertPrice';
 import FlightCardFareOption from "@/app/component/(SecondPageComponents)/FlightCardFareOption/FlightCardFareOption";
 import { v4 } from "uuid";
 import "./FlightCard.css";
@@ -36,8 +39,10 @@ const FlightCard = ({
   airlineName,
   airlineCode,
   flightNumber,
-  totalPrice,
+  totalPriceBase,
+  exchangeRate = 1,
 }) => {
+  const { searchCurrencyCode: ctxCode, searchCurrencySymbol, exchangeRate: providerExchangeRate } = useSignInContext();
   let settings = {
     dots: false,
     infinite: false,
@@ -189,8 +194,14 @@ const FlightCard = ({
             />
           </div>
           <button className="bg-orange-500 font-gotham rounded font-bold px-1 sm:px-4 CT:px-7 xl:px-12 py-2 sm:py-3 text-white text-[10px] sm:text-xs CT:text-sm lg:text-base">
-            {searchCurrencyCode}{" "}
-            {totalPrice.replace(/,/g, "") < 0 ? 0 : totalPrice}
+            {/* Prefer provider symbol, then local prop code, then provider code */}
+            {(searchCurrencySymbol || ctxCode || searchCurrencyCode) + " "}
+            {(() => {
+              const base = Number(totalPriceBase || 0);
+              const ex = typeof exchangeRate !== 'undefined' ? exchangeRate : providerExchangeRate || 1;
+              const converted = convertPrice(base, ex);
+              return formatCurrency(converted);
+            })()}
           </button>
           <p className="hidden CT:inline-block capitalize font-gotham mt-3 text-sm text-slate-600 w-full text-center">
             {isReturn
@@ -249,17 +260,18 @@ const FlightCard = ({
                             ? dataItem.priceStructure
                             : brand.priceStructure
                         }
-                        CardPrice={
+                        CardPriceBase={
                           brand.keyData === "Root0"
                             ? Math.ceil(
                                 Number(dataItem.priceStructure.totalPriceFC) -
                                   usersSelectedPrice
-                              ).toLocaleString("en-US")
+                              )
                             : Math.ceil(
-                                Number(brand.priceStructure.totalPriceFC)  -
+                                Number(brand.priceStructure.totalPriceFC) -
                                   usersSelectedPrice
-                              ).toLocaleString("en-US")
+                              )
                         }
+                        exchangeRate={exchangeRate}
                         isReturn={isReturn}
                         isOneWay={isOneWay}
                         isMultiCity={isMultiCity}

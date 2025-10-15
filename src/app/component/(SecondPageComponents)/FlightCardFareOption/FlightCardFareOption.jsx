@@ -1,16 +1,20 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Button, Table } from "antd";
+import formatCurrency from '@/utils/formatCurrency';
+import convertPrice from '@/utils/convertPrice';
 import { GiMeal } from "react-icons/gi";
 import { MdAirlineSeatReclineExtra } from "react-icons/md";
 import { FaPen } from "react-icons/fa";
 import { MdFreeCancellation } from "react-icons/md";
 import { LuBaggageClaim } from "react-icons/lu";
 import { Modal } from "antd";
+import { useSignInContext } from '@/providers/SignInStateProvider';
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
 function FlightCardFareOption(props) {
+  const { searchCurrencyCode: ctxCode, searchCurrencySymbol, exchangeRate: providerExchangeRate } = useSignInContext();
   const router = useRouter();
   const [modificationOpen, setModificationOpen] = useState(false);
   const [cancellationOpen, setCancellationOpen] = useState(false);
@@ -210,7 +214,10 @@ function FlightCardFareOption(props) {
         };
         return newprevData;
       });
-      props.setUsersSelectedPrice(Number(props.CardPrice.replace(/,/g, "")));
+  // CardPriceBase is a numeric base price in default/base currency (e.g., PKR)
+  // Use exchangeRate to convert to selected currency for display and selection state
+  const basePrice = Number(props.CardPriceBase || 0);
+  props.setUsersSelectedPrice(basePrice);
       props.setSearchTriggered(true);
       props.setLegsCount((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -347,7 +354,7 @@ function FlightCardFareOption(props) {
       return updatedData;
     });
     props.setUsersSelectedPrice((prev) => {
-      let newPrice = Number(props.CardPrice.replace(/,/g, ""));
+  let newPrice = Number(props.CardPriceBase || 0);
       return prev + newPrice;
     });
     let lCount = props.legsCount;
@@ -628,8 +635,13 @@ function FlightCardFareOption(props) {
               }
             }}
           >
-            {props.searchCurrencyCode}{" "}
-            {props.CardPrice.replace(/,/g, "") < 0 ? 0 : props.CardPrice}/-
+            {(searchCurrencySymbol || ctxCode || props.searchCurrencyCode) + " "}
+            {(function () {
+              const base = Number(props.CardPriceBase || 0);
+              const ex = typeof props.exchangeRate !== 'undefined' ? props.exchangeRate : providerExchangeRate || 1;
+              const converted = convertPrice(base, ex);
+              return formatCurrency(converted);
+            })()}/-
           </Button>
         </div>
       </div>

@@ -17,13 +17,28 @@ export function useGetReservation() {
         cache: "no-store",
       });
       if (!response.ok) {
-        throw new Error("Failed to fetch");
+        // Surface server-provided error body if available
+        const errorText = (await response.text()).trim();
+        throw new Error(errorText || `Reservation request failed (HTTP ${response.status})`);
       }
-      const data = await response.json();
-      setData(data);
-      return data;
+      // Try to parse JSON; if not JSON, return raw text
+      const contentType = response.headers.get("content-type") || "";
+      let parsed;
+      if (contentType.includes("application/json")) {
+        parsed = await response.json();
+      } else {
+        const text = await response.text();
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = { raw: text };
+        }
+      }
+      setData(parsed);
+      return parsed;
     } catch (error) {
       setError(error.message);
+      throw error;
     } finally {
       setLoadingReservation(false);
     }

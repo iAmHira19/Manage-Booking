@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:payment": "node ./scripts/test-payment-validation.js"
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
@@ -57,6 +58,7 @@
   "devDependencies": {
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.1.0",
+    "gh-pages": "^6.3.0",
     "postcss": "^8"
   }
 }

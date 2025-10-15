@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import "./ProductCardDetails.css";
 import { Skeleton } from "antd";
+import { useSignInContext } from "@/providers/SignInStateProvider";
+import formatCurrency from '@/utils/formatCurrency';
+import convertPrice from '@/utils/convertPrice';
 
 const ProductCardDetails = ({
   priceStructure,
@@ -18,6 +21,8 @@ const ProductCardDetails = ({
   TotalTaxesPrice,
   BasePrice,
 }) => {
+  const { exchangeRate, searchCurrencySymbol, searchCurrencyCode } = useSignInContext();
+  const currencyDisplayLocal = searchCurrencySymbol || searchCurrencyCode || currency;
   // Baggage details
   const [baggageAllowance, setBaggageAllowance] = useState([]);
   const [baggageAllowanceLocal, setBaggageAllowanceLocal] = useState([]);
@@ -392,11 +397,13 @@ const ProductCardDetails = ({
                           <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                             Fare Per Adult{" "}
                             <span className="text-xs sm:text-sm font-light">
-                              {currency}{" "}
-                              {Math.ceil(
-                                Number(priceStructure?.adultPrice ?? 0) +
-                                  Number(priceStructure?.adultTax ?? 0)
-                              ).toLocaleString("en-US")}
+                                {currencyDisplayLocal}{" "}
+                                {formatCurrency(
+                                  convertPrice(
+                                    Number(priceStructure?.adultPrice ?? 0) + Number(priceStructure?.adultTax ?? 0),
+                                    Number(exchangeRate ?? 1)
+                                  )
+                                )}
                             </span>
                           </p>
                           {Number(priceStructure?.childPrice) +
@@ -405,11 +412,13 @@ const ProductCardDetails = ({
                             <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                               Fare Per Child{" "}
                               <span className="text-xs sm:text-sm font-light">
-                                {currency}{" "}
-                                {Math.ceil(
-                                  Number(priceStructure?.childPrice ?? 0) +
-                                    Number(priceStructure?.childTax ?? 0)
-                                ).toLocaleString("en-US")}
+                                {currencyDisplayLocal}{" "}
+                                {formatCurrency(
+                                  convertPrice(
+                                    Number(priceStructure?.childPrice ?? 0) + Number(priceStructure?.childTax ?? 0),
+                                    Number(exchangeRate ?? 1)
+                                  )
+                                )}
                               </span>
                             </p>
                           )}
@@ -419,11 +428,13 @@ const ProductCardDetails = ({
                             <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                               Fare Per Infant{" "}
                               <span className="text-xs sm:text-sm font-light">
-                                {currency}{" "}
-                                {Math.ceil(
-                                  Number(priceStructure?.infantPrice ?? 0) +
-                                    Number(priceStructure?.infantTax ?? 0)
-                                ).toLocaleString("en-US")}
+                                {currencyDisplayLocal}{" "}
+                                {formatCurrency(
+                                  convertPrice(
+                                    Number(priceStructure?.infantPrice ?? 0) + Number(priceStructure?.infantTax ?? 0),
+                                    Number(exchangeRate ?? 1)
+                                  )
+                                )}
                               </span>
                             </p>
                           )}
@@ -435,41 +446,49 @@ const ProductCardDetails = ({
                           <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                             Base Fare{" "}
                             <span className="font-light text-xs sm:text-sm">
-                              {currency}{" "}
-                              {Math.ceil(
-                                Number(priceStructure?.adultPrice ?? 0) +
-                                  Number(priceStructure?.childPrice ?? 0) +
-                                  Number(priceStructure?.infantPrice ?? 0)
-                              ).toLocaleString("en-US")}
+                              {currencyDisplayLocal}{" "}
+                              {formatCurrency(
+                                convertPrice(
+                                  Number(priceStructure?.adultPrice ?? 0) +
+                                    Number(priceStructure?.childPrice ?? 0) +
+                                    Number(priceStructure?.infantPrice ?? 0),
+                                  Number(exchangeRate ?? 1)
+                                )
+                              )}
                             </span>
                           </p>
                           <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                             Total Taxes{" "}
                             <span className="font-light text-xs sm:text-sm">
-                              {currency}{" "}
-                              {Math.ceil(
-                                Number(priceStructure?.adultTax ?? 0) +
-                                  Number(priceStructure?.childTax ?? 0) +
-                                  Number(priceStructure?.infantTax ?? 0)
-                              ).toLocaleString("en-US")}
+                              {currencyDisplayLocal}{" "}
+                              {formatCurrency(
+                                convertPrice(
+                                  Number(priceStructure?.adultTax ?? 0) +
+                                    Number(priceStructure?.childTax ?? 0) +
+                                    Number(priceStructure?.infantTax ?? 0),
+                                  Number(exchangeRate ?? 1)
+                                )
+                              )}
                             </span>
                           </p>
                           <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                             Service Fee{" "}
                             <span className="font-light text-xs sm:text-sm">
-                              {currency}{" "}
-                              {Number(
-                                priceStructure?.serviceFee ?? 0
-                              ).toLocaleString("en-US")}
+                              {currencyDisplayLocal}{" "}
+                              {formatCurrency(
+                                convertPrice(Number(priceStructure?.serviceFee ?? 0), Number(exchangeRate ?? 1))
+                              )}
                             </span>
                           </p>
                           <p className="Price w-full font-gotham font-light flex justify-between text-xs sm:text-sm">
                             Grand total{" "}
                             <span className="font-light text-xs sm:text-sm">
                               {currency}{" "}
-                              {Math.ceil(
-                                Number(priceStructure?.totalPriceFC ?? 0)
-                              ).toLocaleString("en-US")}
+                              {formatCurrency(
+                                Math.ceil(
+                                  convertPrice(Number(priceStructure?.totalPriceFC ?? 0), Number(exchangeRate ?? 1))
+                                )
+                              )}
                             </span>
                           </p>
                         </div>
