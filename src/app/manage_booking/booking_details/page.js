@@ -30,8 +30,10 @@ export default function BookingDetailsPage() {
   const [bookingData, setBookingData] = useState(null);
   const [pdfData, setPdfData] = useState(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [pnrInput, setPnrInput] = useState("");
   const [lastAttemptedEndpoints, setLastAttemptedEndpoints] = useState([]);
   const [lastApiError, setLastApiError] = useState("");
+  const [priceStructure, setPriceStructure] = useState(null);
   
   // Prefer explicit env, fallback to common local dev port
   const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
@@ -103,8 +105,8 @@ export default function BookingDetailsPage() {
           const parsedContext = JSON.parse(context);
           console.log("Loaded booking context:", parsedContext);
           setBookingContext(parsedContext);
-          
-          // Fetch itinerary data using PNR
+          // Prefill PNR input and fetch itinerary data using PNR
+          setPnrInput(parsedContext.bookingId || '');
           await fetchItineraryData(parsedContext.bookingId);
         } else {
           // Try to get PNR from URL params as fallback
@@ -114,88 +116,23 @@ export default function BookingDetailsPage() {
             console.log("Using PNR from URL params:", pnr);
             await fetchItineraryData(pnr);
           } else {
-            // Show sample data when no booking reference is found
-            console.log("No booking reference found, showing sample data");
-            setMessage({ type: "info", text: "No booking reference found. Showing sample data for demonstration." });
-            loadSampleData();
+            // No PNR provided: stop loading and prompt user to enter PNR
+            console.log("No booking reference found");
+            setMessage({ type: "info", text: "Enter a valid PNR to load booking details." });
+            setDataLoading(false);
           }
         }
       } catch (e) {
         console.error("Error loading booking context:", e);
-        setMessage({ type: "info", text: "Error loading booking data. Showing sample data for demonstration." });
-        // Show sample data even on error
-        loadSampleData();
+        setMessage({ type: "error", text: "Error loading booking context. Please enter PNR to try again." });
+        setDataLoading(false);
       }
     };
 
     loadBookingData();
   }, []);
 
-  // Helper function to load sample data
-  const loadSampleData = () => {
-    const sampleBookingData = {
-      bookingReference: "CF123456",
-      issueDate: "2024-01-10",
-      flightNumber: "PK 301",
-      tripType: "Round Trip",
-      refundable: true
-    };
-
-    const samplePassengerData = [
-      {
-        id: 1,
-        firstName: "Muhammad",
-        lastName: "Ali",
-        fullName: "Muhammad Ali",
-        email: "muhammad.ali@example.com",
-        phone: "+923001234567",
-        airlineBookingRef: "CF123456",
-        origin: "Lahore (LHE)",
-        destination: "Karachi (KHI)",
-        departureTime: "2024-01-15T14:30:00",
-        arrivalTime: "2024-01-15T16:45:00",
-        baggage: "20kg",
-        class: "Economy",
-        documentType: "passport",
-        documentNumber: "AB1234567",
-        documentExpiry: "2025-12-31",
-        address: {
-          street: "123 Main Street, Gulberg",
-          city: "Lahore",
-          country: "Pakistan",
-          postalCode: "54000"
-        }
-      },
-      {
-        id: 2,
-        firstName: "Fatima",
-        lastName: "Khan",
-        fullName: "Fatima Khan",
-        email: "fatima.khan@example.com",
-        phone: "+923007654321",
-        airlineBookingRef: "CF123456",
-        origin: "Lahore (LHE)",
-        destination: "Karachi (KHI)",
-        departureTime: "2024-01-15T14:30:00",
-        arrivalTime: "2024-01-15T16:45:00",
-        baggage: "20kg",
-        class: "Economy",
-        documentType: "passport",
-        documentNumber: "CD9876543",
-        documentExpiry: "2026-06-30",
-        address: {
-          street: "456 Park Avenue, DHA",
-          city: "Karachi",
-          country: "Pakistan",
-          postalCode: "75500"
-        }
-      }
-    ];
-
-    setBookingData(sampleBookingData);
-    setPassengerData(samplePassengerData);
-    setDataLoading(false);
-  };
+  // NOTE: Removed sample data helper. Booking details must come from API via PNR.
 
   // Fetch itinerary data from API
   const fetchItineraryData = async (pnr) => {
@@ -278,8 +215,12 @@ export default function BookingDetailsPage() {
           }));
           setPassengerData(processedPassengers);
         } else {
-          console.log("No valid passenger data found, using sample data");
-          loadSampleData();
+          console.log("No valid passenger data found for PNR", pnr);
+          setMessage({ type: 'error', text: `No passenger information returned for PNR ${pnr}.` });
+          setItineraryData(null);
+          setPassengerData([]);
+          setBookingData(null);
+          setDataLoading(false);
           return; // Exit early to avoid setting empty data
         }
 
@@ -324,99 +265,40 @@ export default function BookingDetailsPage() {
           setPdfData(normalized.ticketDocument);
         }
 
+        if (normalized.priceStructure) {
+          setPriceStructure(normalized.priceStructure);
+        } else {
+          setPriceStructure(null);
+        }
+
         setMessage({ type: "success", text: `Booking data loaded successfully from ${result.endpoint}!` });
       } else {
+        // No endpoint returned useful data. Show detailed error to the user and do not populate sample data.
         setLastAttemptedEndpoints(result.attempted || []);
         setLastApiError(result.error || "");
-        // If no API endpoint works, show sample data with a detailed warning
-        console.warn("No working API endpoint found, showing sample data", result);
+        console.warn("No working API endpoint found", result);
 
-        // Build helpful diagnostic text for the UI
-        const lastErrText = result.error || "No response returned";
+        const lastErrText = result.error || "No response returned from attempted endpoints.";
         const attemptedList = Array.isArray(result.attempted) ? result.attempted : [];
         const attemptedPreview = attemptedList.join("\n");
 
-        let suggestion = "Please verify the backend is running and that the Booking controller route exists.";
-        if (typeof lastErrText === 'string' && lastErrText.includes('No type was found that matches the controller named')) {
-          suggestion = "The backend reports a missing controller. Check your backend routing and controller name (e.g. 'Booking').";
-        }
-
+        let suggestion = "Please verify the backend is running and the `/api/tp/getItinerary` route is reachable.";
         setMessage({ 
-          type: "warning", 
-          text: `No working API endpoint found. Showing sample data. Last error: ${lastErrText}. Tried endpoints:\n${attemptedPreview}\n${suggestion}`
+          type: "error", 
+          text: `Unable to load booking for PNR ${pnr}. Last error: ${lastErrText}. Tried endpoints:\n${attemptedPreview}\n${suggestion}`
         });
-        
-        // Set sample data as fallback - always show sample data when API fails
-        setItineraryData({ pnr: pnr, sample: true });
-        
-        // Load comprehensive sample data with all fields needed for editing
-        const sampleBookingData = {
-          bookingReference: pnr || "CF123456",
-          issueDate: "2024-01-10",
-          flightNumber: "PK 301",
-          tripType: "Round Trip",
-          refundable: true
-        };
 
-        const samplePassengerData = [
-          {
-            id: 1,
-            firstName: "Muhammad",
-            lastName: "Ali",
-            fullName: "Muhammad Ali",
-            email: "muhammad.ali@example.com",
-            phone: "+923001234567",
-            airlineBookingRef: pnr || "CF123456",
-            origin: "Lahore (LHE)",
-            destination: "Karachi (KHI)",
-            departureTime: "2024-01-15T14:30:00",
-            arrivalTime: "2024-01-15T16:45:00",
-            baggage: "20kg",
-            class: "Economy",
-            documentType: "passport",
-            documentNumber: "AB1234567",
-            documentExpiry: "2025-12-31",
-            address: {
-              street: "123 Main Street, Gulberg",
-              city: "Lahore",
-              country: "Pakistan",
-              postalCode: "54000"
-            }
-          },
-          {
-            id: 2,
-            firstName: "Fatima",
-            lastName: "Khan",
-            fullName: "Fatima Khan",
-            email: "fatima.khan@example.com",
-            phone: "+923007654321",
-            airlineBookingRef: pnr || "CF123456",
-            origin: "Lahore (LHE)",
-            destination: "Karachi (KHI)",
-            departureTime: "2024-01-15T14:30:00",
-            arrivalTime: "2024-01-15T16:45:00",
-            baggage: "20kg",
-            class: "Economy",
-            documentType: "passport",
-            documentNumber: "CD9876543",
-            documentExpiry: "2026-06-30",
-            address: {
-              street: "456 Park Avenue, DHA",
-              city: "Karachi",
-              country: "Pakistan",
-              postalCode: "75500"
-            }
-          }
-        ];
-
-        setPassengerData(samplePassengerData);
-        setBookingData(sampleBookingData);
+        // Clear any previous data so UI reflects absence of valid booking
+        setItineraryData(null);
+        setPassengerData([]);
+        setBookingData(null);
       }
     } catch (error) {
       console.error("Error fetching itinerary data:", error);
-      setMessage({ type: "info", text: "Error loading booking data. Showing sample data for demonstration." });
-      // Show sample data even on API error
-      loadSampleData();
+      setMessage({ type: "error", text: `Error fetching itinerary data: ${error?.message || error}` });
+      setItineraryData(null);
+      setPassengerData([]);
+      setBookingData(null);
     } finally {
       setDataLoading(false);
     }
@@ -841,6 +723,30 @@ export default function BookingDetailsPage() {
                   {activeMenuItem}
                 </h1>
 
+                {/* PNR Input */}
+                <div className="mb-6 flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={pnrInput}
+                    onChange={(e) => setPnrInput(e.target.value)}
+                    placeholder="Enter PNR (e.g. ABC123)"
+                    className="px-3 py-2 border rounded-md w-64"
+                  />
+                  <Button
+                    onClick={async () => {
+                      if (!pnrInput || pnrInput.trim().length === 0) {
+                        setMessage({ type: 'error', text: 'Please enter a valid PNR' });
+                        return;
+                      }
+                      setMessage({ type: '', text: '' });
+                      await fetchItineraryData(pnrInput.trim());
+                    }}
+                    className="bg-[#153E7E] hover:bg-[#0F2F5A] text-white px-4 py-2"
+                  >
+                    Load Booking
+                  </Button>
+                </div>
+
                 {/* Personal Info Section */}
                 <div className="mb-8">
                 <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
@@ -1035,6 +941,26 @@ export default function BookingDetailsPage() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+            {/* Price Summary Card */}
+            <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm mt-6">
+              <CardContent className="px-6 py-6">
+                <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide mb-4">Price Summary</h2>
+                {dataLoading ? (
+                  <div className="text-sm text-gray-600">Loading price details...</div>
+                ) : priceStructure ? (
+                  <div className="text-sm text-[#2E4A6B]">
+                    <p><strong>Total:</strong> {priceStructure.currency ? `${priceStructure.currency} ` : ''}{priceStructure.totalPriceFC ?? priceStructure.totalPrice ?? 'N/A'}</p>
+                    {priceStructure.priceBreakDown && (
+                      <div className="mt-2 text-xs text-gray-700">
+                        <pre className="whitespace-pre-wrap">{JSON.stringify(priceStructure.priceBreakDown, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">No price information available for this booking.</div>
+                )}
               </CardContent>
             </Card>
           </div>

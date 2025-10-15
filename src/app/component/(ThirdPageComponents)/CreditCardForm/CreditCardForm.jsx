@@ -111,94 +111,371 @@ const CreditCardForm = ({
   // };
 
   // Update makeReservationCall to handle both JSON and text responses
+// const makeReservationCall = async () => {
+//   // Validate and prepare data first
+//   const newData = handleCreditCardSubmit();
+//   console.log("Payload to backend: " , JSON.stringify(newData,null,2));
+//   if (!newData) {
+//     // Validation failed; ensure UI remains enabled
+//     setIsButtonHidden(false);
+//     setPayAniLoading(false);
+//     return;
+//   }
+
+//   // Only hide the button and show animation after validation passes
+//   setIsButtonHidden(true);
+//   setPayAniLoading(true);
+//   setReservationError(null);
+
+//   // Preflight: ensure WBKey and Traveler IDs exist to avoid backend errors
+//   const missingReasons = [];
+//   if (!hasWBKey) missingReasons.push("WBKey");
+//   if (!hasTravelerIds) missingReasons.push("traveler IDs");
+//   if (missingReasons.length) {
+//     setReservationError(
+//       `Missing ${missingReasons.join(", ")}. Please complete the Passengers step and try again.`
+//     );
+//     setIsButtonHidden(false);
+//     setPayAniLoading(false);
+//     return;
+//   }
+
+//   try {
+//     // 1) Create or confirm reservation as before (kept for PNR extraction)
+//     const reservationData = await GetReservation(newData);
+//     console.log("data from GetReservation: ", reservationData);
+//     const gdsReceipt = reservationData?.ReservationResponse?.Reservation?.Receipt?.find(
+//       (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
+//     );
+//     const pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
+//     if (pnr) sessionStorage.setItem("reservationPNR", pnr);
+
+//     // 2) If reservation already returned a session id, use it directly
+//     let session =
+//       reservationData?.sessionId ||
+//       reservationData?.SessionId ||
+//       reservationData?.session?.id ||
+//       null;
+
+//     if (!session) {
+//       // Try to create a payment session via dedicated endpoint(s)
+//       const baseUri = process.env.NEXT_PUBLIC_BASE_URI;
+//       const paymentPayload = {
+//         PNR: pnr,
+//         amount: newData?.Payment?.amount,
+//         currency: newData?.Payment?.currency,
+//         orderId: newData?.Payment?.orderId,
+//         orderHint: newData?.Payment?.orderHint,
+//         description: newData?.Payment?.description,
+//         Customer: newData?.Customer,
+//         Billing: newData?.billingInfo,
+//         Travelers: newData?.travelers,
+//         WBKey:
+//           newData?.WBKey ||
+//           (typeof window !== 'undefined'
+//             ? sessionStorage.getItem('WBKey')
+//             : undefined),
+//         UserId: newData?.UserID,
+//         ReturnURL: newData?.ReturnURL,
+//       };
+
+//       const sessionResp = await createPaymentSession(paymentPayload, baseUri);
+//       if (!sessionResp.success) {
+//         const attempted = sessionResp.attempted?.join(', ') || '';
+//         const suggestion = sessionResp.suggestion || '';
+//         throw new Error(
+//           `${sessionResp.error}${attempted ? ` | Tried: ${attempted}` : ''}${
+//             suggestion ? ` | ${suggestion}` : ''
+//           }`
+//         );
+//       }
+//       session = sessionResp.sessionId;
+//     }
+
+//     setSessionId(session);
+//   } catch (error) {
+//     console.error("Error fetching reservation:", error?.message || error, error);
+//     setReservationError(error?.message || String(error));
+//     // Reset UI so user can try again
+//     setIsButtonHidden(false);
+//     setPayAniLoading(false);
+//   }
+// };
+// const makeReservationCall = async () => {
+//   const newData = handleCreditCardSubmit();
+//   if (!newData) return;
+//   setReservationError(null);
+//   setPayAniLoading(true);
+//   setIsButtonHidden(true);
+
+//   try {
+//     console.log("Payload to backend:", JSON.stringify(newData, null, 2));
+//     const response = await GetReservation(newData);
+
+//     // Handle both JSON and plain text responses
+//     let data;
+//     try {
+//       data = typeof response === "string" ? JSON.parse(response) : response;
+//       console.log("Parsed GetReservation response:", JSON.stringify(data, null, 2));
+//     } catch (parseError) {
+//       console.error("Failed to parse GetReservation response:", parseError, response);
+//       throw new Error("Invalid response from server: " + (response || "Empty response"));
+//     }
+
+//     // Check for backend errors
+//     const backendErrors =
+//       data?.ReservationResponse?.Result?.Error ||
+//       data?.Result?.Error ||
+//       data?.error ||
+//       null;
+//     if (backendErrors) {
+//       const errorMessage = Array.isArray(backendErrors)
+//         ? backendErrors.map((e) => e?.Message || e).join(" | ")
+//         : typeof backendErrors === "string"
+//         ? backendErrors
+//         : backendErrors?.Message || "Reservation failed";
+//       console.error("Reservation error:", errorMessage, backendErrors);
+//       toast.error(errorMessage, {
+//         duration: 4000,
+//         style: { backgroundColor: "#f8312f", color: "#fff" },
+//       });
+//       setReservationError(errorMessage);
+//       setPayAniLoading(false);
+//       setIsButtonHidden(false);
+//       return;
+//     }
+
+//     // Extract PNR from Receipt where source === "1G"
+//     const receipts = data?.ReservationResponse?.Reservation?.Receipt;
+//     let pnr = null;
+//     if (Array.isArray(receipts)) {
+//       console.log("Receipts found:", JSON.stringify(receipts, null, 2));
+//       const gdsReceipt = receipts.find(
+//         (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
+//       );
+//       pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
+//     } else {
+//       console.warn(
+//         "Receipts not found or not an array in GetReservation response:",
+//         JSON.stringify(receipts, null, 2)
+//       );
+//     }
+
+//     if (pnr) {
+//       sessionStorage.setItem("reservationPNR", pnr);
+//       console.log("PNR stored in sessionStorage:", pnr);
+//     } else {
+//       console.warn("PNR not found for source '1G'. Attempting fallback PNR extraction.");
+//       // Fallback: Try to find any valid PNR in receipts
+//       const anyReceipt = Array.isArray(receipts)
+//         ? receipts.find((receipt) => receipt?.Confirmation?.Locator?.value)
+//         : null;
+//       pnr = anyReceipt?.Confirmation?.Locator?.value || null;
+//       if (pnr) {
+//         sessionStorage.setItem("reservationPNR", pnr);
+//         console.log("Fallback PNR stored in sessionStorage:", pnr);
+//       } else {
+//         console.error("No valid PNR found in any receipt. Response:", JSON.stringify(data, null, 2));
+//         toast.error("Unable to retrieve booking reference (PNR). Please try again or contact support.", {
+//           duration: 4000,
+//           style: { backgroundColor: "#f8312f", color: "#fff" },
+//         });
+//         setReservationError("Unable to retrieve booking reference (PNR).");
+//         setPayAniLoading(false);
+//         setIsButtonHidden(false);
+//         return;
+//       }
+//     }
+
+//     // Extract session ID with fallback for different response structures
+//     const resolvedSessionId =
+//       data?.sessionId ||
+//       data?.session_id ||
+//       data?.session?.id ||
+//       data?.Result?.sessionId ||
+//       data?.result?.sessionId ||
+//       null;
+
+//     if (!resolvedSessionId) {
+//       console.error("No sessionId found in reservation response:", JSON.stringify(data, null, 2));
+//       toast.error("Payment session could not be created. Please try again.", {
+//         duration: 4000,
+//         style: { backgroundColor: "#f8312f", color: "#fff" },
+//       });
+//       setReservationError("Payment session could not be created. Please try again.");
+//       setPayAniLoading(false);
+//       setIsButtonHidden(false);
+//       return;
+//     }
+
+//     setSessionId(resolvedSessionId);
+//     console.log("Session ID set:", resolvedSessionId);
+//   } catch (error) {
+//     console.error("Error fetching reservation:", error.message, error);
+//     const errorMessage = error.message || "Failed to create payment session";
+//     toast.error(errorMessage, {
+//       duration: 4000,
+//       style: { backgroundColor: "#f8312f", color: "#fff" },
+//     });
+//     setReservationError(errorMessage);
+//     setPayAniLoading(false);
+//     setIsButtonHidden(false);
+//   }
+// };
 const makeReservationCall = async () => {
-  // Validate and prepare data first
   const newData = handleCreditCardSubmit();
-  console.log("Payload to backend: " , JSON.stringify(newData,null,2));
   if (!newData) {
-    // Validation failed; ensure UI remains enabled
-    setIsButtonHidden(false);
     setPayAniLoading(false);
+    setIsButtonHidden(false);
     return;
   }
 
-  // Only hide the button and show animation after validation passes
-  setIsButtonHidden(true);
-  setPayAniLoading(true);
+  // Additional payload validation
+  if (!newData.WBKey) {
+    toast.error("Session key (WBKey) is missing. Please complete the Passengers step.", {
+      duration: 4000,
+      style: { backgroundColor: "#f8312f", color: "#fff" },
+    });
+    setPayAniLoading(false);
+    setIsButtonHidden(false);
+    return;
+  }
+  if (!newData.travelers?.every(t => t.Traveler?.Identifier?.value)) {
+    toast.error("Traveler IDs are missing. Please complete the Passengers step.", {
+      duration: 4000,
+      style: { backgroundColor: "#f8312f", color: "#fff" },
+    });
+    setPayAniLoading(false);
+    setIsButtonHidden(false);
+    return;
+  }
+
   setReservationError(null);
-
-  // Preflight: ensure WBKey and Traveler IDs exist to avoid backend errors
-  const missingReasons = [];
-  if (!hasWBKey) missingReasons.push("WBKey");
-  if (!hasTravelerIds) missingReasons.push("traveler IDs");
-  if (missingReasons.length) {
-    setReservationError(
-      `Missing ${missingReasons.join(", ")}. Please complete the Passengers step and try again.`
-    );
-    setIsButtonHidden(false);
-    setPayAniLoading(false);
-    return;
-  }
+  setPayAniLoading(true);
+  setIsButtonHidden(true);
 
   try {
-    // 1) Create or confirm reservation as before (kept for PNR extraction)
-    const reservationData = await GetReservation(newData);
-    console.log("data from GetReservation: ", reservationData);
-    const gdsReceipt = reservationData?.ReservationResponse?.Reservation?.Receipt?.find(
-      (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
-    );
-    const pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
-    if (pnr) sessionStorage.setItem("reservationPNR", pnr);
+    console.log("Payload to backend:", JSON.stringify(newData, null, 2));
+    const response = await GetReservation(newData);
 
-    // 2) If reservation already returned a session id, use it directly
-    let session =
-      reservationData?.sessionId ||
-      reservationData?.SessionId ||
-      reservationData?.session?.id ||
-      null;
-
-    if (!session) {
-      // Try to create a payment session via dedicated endpoint(s)
-      const baseUri = process.env.NEXT_PUBLIC_BASE_URI;
-      const paymentPayload = {
-        PNR: pnr,
-        amount: newData?.Payment?.amount,
-        currency: newData?.Payment?.currency,
-        orderId: newData?.Payment?.orderId,
-        orderHint: newData?.Payment?.orderHint,
-        description: newData?.Payment?.description,
-        Customer: newData?.Customer,
-        Billing: newData?.billingInfo,
-        Travelers: newData?.travelers,
-        WBKey:
-          newData?.WBKey ||
-          (typeof window !== 'undefined'
-            ? sessionStorage.getItem('WBKey')
-            : undefined),
-        UserId: newData?.UserID,
-        ReturnURL: newData?.ReturnURL,
-      };
-
-      const sessionResp = await createPaymentSession(paymentPayload, baseUri);
-      if (!sessionResp.success) {
-        const attempted = sessionResp.attempted?.join(', ') || '';
-        const suggestion = sessionResp.suggestion || '';
-        throw new Error(
-          `${sessionResp.error}${attempted ? ` | Tried: ${attempted}` : ''}${
-            suggestion ? ` | ${suggestion}` : ''
-          }`
-        );
+    let data;
+    if (typeof response === "string") {
+      // Check for plain text error responses
+      if (response.startsWith("ERROR:") || response.includes("technical issue")) {
+        console.error("Server returned plain text error:", response);
+        toast.error(response, {
+          duration: 4000,
+          style: { backgroundColor: "#f8312f", color: "#fff" },
+        });
+        setReservationError(response);
+        setPayAniLoading(false);
+        setIsButtonHidden(false);
+        return;
       }
-      session = sessionResp.sessionId;
+      // Attempt to parse as JSON
+      try {
+        data = JSON.parse(response);
+        console.log("Parsed GetReservation response:", JSON.stringify(data, null, 2));
+      } catch (parseError) {
+        console.error("Failed to parse GetReservation response:", parseError, response);
+        throw new Error("Invalid response from server: " + (response || "Empty response"));
+      }
+    } else {
+      data = response; // Already parsed by useGetReservation
     }
 
-    setSessionId(session);
+    // Handle backend errors
+    const backendErrors =
+      data?.ReservationResponse?.Result?.Error ||
+      data?.Result?.Error ||
+      data?.error ||
+      null;
+    if (backendErrors) {
+      const errorMessage = Array.isArray(backendErrors)
+        ? backendErrors.map((e) => e?.Message || e).join(" | ")
+        : typeof backendErrors === "string"
+        ? backendErrors
+        : backendErrors?.Message || "Reservation failed";
+      console.error("Reservation error:", errorMessage, backendErrors);
+      toast.error(errorMessage, {
+        duration: 4000,
+        style: { backgroundColor: "#f8312f", color: "#fff" },
+      });
+      setReservationError(errorMessage);
+      setPayAniLoading(false);
+      setIsButtonHidden(false);
+      return;
+    }
+
+    // Extract PNR
+    const receipts = data?.ReservationResponse?.Reservation?.Receipt;
+    let pnr = null;
+    if (Array.isArray(receipts)) {
+      console.log("Receipts found:", JSON.stringify(receipts, null, 2));
+      const gdsReceipt = receipts.find(
+        (receipt) => receipt?.Confirmation?.Locator?.source === "1G"
+      );
+      pnr = gdsReceipt?.Confirmation?.Locator?.value || null;
+    }
+
+    if (pnr) {
+      sessionStorage.setItem("reservationPNR", pnr);
+      console.log("PNR stored in sessionStorage:", pnr);
+    } else {
+      console.warn("PNR not found for source '1G'. Attempting fallback.");
+      const anyReceipt = Array.isArray(receipts)
+        ? receipts.find((receipt) => receipt?.Confirmation?.Locator?.value)
+        : null;
+      pnr = anyReceipt?.Confirmation?.Locator?.value || null;
+      if (pnr) {
+        sessionStorage.setItem("reservationPNR", pnr);
+        console.log("Fallback PNR stored in sessionStorage:", pnr);
+      } else {
+        console.error("No valid PNR found:", JSON.stringify(data, null, 2));
+        toast.error("Unable to retrieve booking reference (PNR). Please try again or contact support.", {
+          duration: 4000,
+          style: { backgroundColor: "#f8312f", color: "#fff" },
+        });
+        setReservationError("Unable to retrieve booking reference (PNR).");
+        setPayAniLoading(false);
+        setIsButtonHidden(false);
+        return;
+      }
+    }
+
+    // Extract session ID
+    const resolvedSessionId =
+      data?.sessionId ||
+      data?.session_id ||
+      data?.session?.id ||
+      data?.Result?.sessionId ||
+      data?.result?.sessionId ||
+      null;
+
+    if (!resolvedSessionId) {
+      console.error("No sessionId found:", JSON.stringify(data, null, 2));
+      toast.error("Payment session could not be created. Please try again.", {
+        duration: 4000,
+        style: { backgroundColor: "#f8312f", color: "#fff" },
+      });
+      setReservationError("Payment session could not be created.");
+      setPayAniLoading(false);
+      setIsButtonHidden(false);
+      return;
+    }
+
+    setSessionId(resolvedSessionId);
+    console.log("Session ID set:", resolvedSessionId);
   } catch (error) {
-    console.error("Error fetching reservation:", error?.message || error, error);
-    setReservationError(error?.message || String(error));
-    // Reset UI so user can try again
-    setIsButtonHidden(false);
+    console.error("Error fetching reservation:", error.message, error);
+    const errorMessage = error.message || "Failed to create payment session";
+    toast.error(errorMessage, {
+      duration: 4000,
+      style: { backgroundColor: "#f8312f", color: "#fff" },
+    });
+    setReservationError(errorMessage);
     setPayAniLoading(false);
+    setIsButtonHidden(false);
   }
 };
   const scriptLoaded = useRef(false);
