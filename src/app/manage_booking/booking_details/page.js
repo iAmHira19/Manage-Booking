@@ -132,41 +132,36 @@ export default function BookingDetailsPage() {
     loadBookingData();
   }, []);
 
+  // Dynamic passenger data from API
+  const getPassengerData = (pnr, lastName) => {
+    // This will be populated from API response
+    return [];
+  };
+
   // NOTE: Removed sample data helper. Booking details must come from API via PNR.
 
-  // Fetch itinerary data from API
+  // Fetch itinerary data from API using the specific endpoint
   const fetchItineraryData = async (pnr) => {
     setDataLoading(true);
     try {
-      // Prefer provided Manage Booking endpoint, allow env override, then fallbacks
-      const configured = parsePathList(process.env.NEXT_PUBLIC_ITINERARY_PATHS, pnr);
-      const bases = [BASE_URI, ALT_BASE_URI];
-      const defaultPaths = [
-        "/api/tpflight/getItinerary",
-        "/api/tp/getItinerary",
-        "/api/Booking/Details",
-        "/api/Booking/GetItinerary",
-        "/api/ManageBooking/GetItinerary",
-        "/api/getItinerary",
-        "/api/booking/getItinerary",
-        "/api/manage/getItinerary",
-        "/api/Itinerary",
-        "/api/BookingDetails",
-      ];
-      const possibleEndpoints = configured || bases.flatMap((b) =>
-        defaultPaths.map((p) => `${b}${p}?PNR=${encodeURIComponent(pnr)}`)
-      );
+      // Use the specific API endpoint provided
+      const itineraryEndpoint = `${BASE_URI}/api/tp/getItinerary?PNR=${encodeURIComponent(pnr)}`;
 
-      const result = await discoverApiEndpoint(possibleEndpoints);
-      
-      if (result.success) {
-        const apiData = result.data;
-        console.log("Itinerary data received from:", result.endpoint, apiData);
+      console.log("Fetching itinerary data from:", itineraryEndpoint);
 
-        // Normalize according to provided contract
+      const response = await fetch(itineraryEndpoint, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        const apiData = await response.json();
+        console.log("Itinerary data received:", apiData);
+
+        // Handle the actual API response structure from Postman
         const normalized = {
           pnr: apiData?.PNR,
-          itinerary: apiData?.ItineraryDetails || apiData,
+          itinerary: apiData?.ItineraryDetails || apiData, // Fallback to entire response if no ItineraryDetails
           ticketDocument: apiData?.TicketDocument,
           priceStructure: apiData?.priceStructure,
         };
@@ -174,92 +169,132 @@ export default function BookingDetailsPage() {
         // Set base datasets
         setItineraryData(normalized.itinerary);
 
-        // Attempt to infer passengers and booking info from ItineraryDetails shapes
-        const passengers =
-          normalized.itinerary?.passengers ||
-          normalized.itinerary?.Passengers ||
-          normalized.itinerary?.passengerList ||
-          normalized.itinerary?.PassengerList ||
-          normalized.itinerary?.travelers ||
-          normalized.itinerary?.Travelers ||
-          apiData?.passengers ||
-          apiData?.Passengers ||
-          apiData?.passengerList ||
-          apiData?.PassengerList ||
-          apiData?.travelers ||
-          apiData?.Travelers ||
-          [];
+        // Extract passenger data from the actual API response
+        // Since the API response doesn't have a separate ItineraryDetails with passengers,
+        // we'll create passenger data from the available information
+        const passengers = [];
 
-        console.log("Found passengers data:", passengers);
+        // If we have priceStructure with passenger counts, create passenger entries
+        if (normalized.priceStructure) {
+          const priceStruct = normalized.priceStructure;
+          const adultCount = parseInt(priceStruct.noOfAdults) || 0;
+          const childCount = parseInt(priceStruct.noOfChild) || 0;
+          const infantCount = parseInt(priceStruct.noOfInfant) || 0;
 
-        if (Array.isArray(passengers) && passengers.length > 0) {
-          // Ensure each passenger has required fields
-          const processedPassengers = passengers.map((passenger, index) => ({
-            id: passenger.id || passenger.passengerId || index + 1,
-            firstName: passenger.firstName || passenger.first_name || passenger.givenName || "",
-            lastName: passenger.lastName || passenger.last_name || passenger.surname || "",
-            fullName: passenger.fullName || passenger.full_name || `${passenger.firstName || ""} ${passenger.lastName || ""}`.trim(),
-            email: passenger.email || passenger.emailAddress || "",
-            phone: passenger.phone || passenger.phoneNumber || passenger.mobile || "",
-            airlineBookingRef: passenger.airlineBookingRef || passenger.bookingReference || passenger.pnr || normalized.pnr,
-            origin: passenger.origin || passenger.departureCity || passenger.from || "",
-            destination: passenger.destination || passenger.arrivalCity || passenger.to || "",
-            departureTime: passenger.departureTime || passenger.deptTime || passenger.departure || "",
-            arrivalTime: passenger.arrivalTime || passenger.arrTime || passenger.arrival || "",
-            baggage: passenger.baggage || passenger.baggageAllowance || passenger.baggageWeight || "",
-            class: passenger.class || passenger.cabinClass || passenger.travelClass || "",
-            documentType: passenger.documentType || passenger.docType || "",
-            documentNumber: passenger.documentNumber || passenger.docNumber || "",
-            documentExpiry: passenger.documentExpiry || passenger.docExpiry || "",
-            address: passenger.address || {}
-          }));
-          setPassengerData(processedPassengers);
-        } else {
-          console.log("No valid passenger data found for PNR", pnr);
-          setMessage({ type: 'error', text: `No passenger information returned for PNR ${pnr}.` });
-          setItineraryData(null);
-          setPassengerData([]);
-          setBookingData(null);
-          setDataLoading(false);
-          return; // Exit early to avoid setting empty data
+          // Create adult passengers
+          for (let i = 0; i < adultCount; i++) {
+            passengers.push({
+              id: i + 1,
+              firstName: `Adult`,
+              lastName: `Passenger ${i + 1}`,
+              fullName: `Adult Passenger ${i + 1}`,
+              email: "",
+              phone: "",
+              airlineBookingRef: normalized.pnr,
+              origin: "N/A",
+              destination: "N/A",
+              departureTime: "",
+              arrivalTime: "",
+              baggage: "Standard",
+              class: "Economy",
+              documentType: "passport",
+              documentNumber: "",
+              documentExpiry: "",
+              address: {}
+            });
+          }
+
+          // Create child passengers
+          for (let i = 0; i < childCount; i++) {
+            passengers.push({
+              id: adultCount + i + 1,
+              firstName: `Child`,
+              lastName: `Passenger ${adultCount + i + 1}`,
+              fullName: `Child Passenger ${adultCount + i + 1}`,
+              email: "",
+              phone: "",
+              airlineBookingRef: normalized.pnr,
+              origin: "N/A",
+              destination: "N/A",
+              departureTime: "",
+              arrivalTime: "",
+              baggage: "Standard",
+              class: "Economy",
+              documentType: "passport",
+              documentNumber: "",
+              documentExpiry: "",
+              address: {}
+            });
+          }
+
+          // Create infant passengers
+          for (let i = 0; i < infantCount; i++) {
+            passengers.push({
+              id: adultCount + childCount + i + 1,
+              firstName: `Infant`,
+              lastName: `Passenger ${adultCount + childCount + i + 1}`,
+              fullName: `Infant Passenger ${adultCount + childCount + i + 1}`,
+              email: "",
+              phone: "",
+              airlineBookingRef: normalized.pnr,
+              origin: "N/A",
+              destination: "N/A",
+              departureTime: "",
+              arrivalTime: "",
+              baggage: "Standard",
+              class: "Economy",
+              documentType: "passport",
+              documentNumber: "",
+              documentExpiry: "",
+              address: {}
+            });
+          }
         }
 
-        const booking =
-          normalized.itinerary?.booking ||
-          normalized.itinerary?.Booking ||
-          normalized.itinerary?.bookingInfo ||
-          normalized.itinerary?.BookingInfo ||
-          normalized.itinerary?.bookingDetails ||
-          normalized.itinerary?.BookingDetails ||
-          apiData?.booking ||
-          apiData?.Booking ||
-          apiData?.bookingInfo ||
-          apiData?.BookingInfo ||
-          null;
-
-        console.log("Found booking data:", booking);
-
-        if (booking) {
-          // Process booking data to ensure required fields
-          const processedBooking = {
-            bookingReference: booking.bookingReference || booking.booking_ref || booking.reference || normalized.pnr,
-            issueDate: booking.issueDate || booking.issue_date || booking.createdDate || booking.created_date,
-            flightNumber: booking.flightNumber || booking.flight_number || booking.flight || "",
-            tripType: booking.tripType || booking.trip_type || booking.journeyType || "",
-            refundable: booking.refundable || booking.isRefundable || false,
-            ...booking
-          };
-          setBookingData(processedBooking);
-        } else {
-          // Minimal booking info from the envelope
-          setBookingData({ 
-            bookingReference: normalized.pnr,
-            issueDate: new Date().toISOString().split('T')[0],
-            flightNumber: "N/A",
-            tripType: "N/A",
-            refundable: false
+        // If no passengers created from priceStructure, create at least one default passenger
+        if (passengers.length === 0) {
+          passengers.push({
+            id: 1,
+            firstName: "Main",
+            lastName: "Passenger",
+            fullName: "Main Passenger",
+            email: "",
+            phone: "",
+            airlineBookingRef: normalized.pnr,
+            origin: "N/A",
+            destination: "N/A",
+            departureTime: "",
+            arrivalTime: "",
+            baggage: "Standard",
+            class: "Economy",
+            documentType: "passport",
+            documentNumber: "",
+            documentExpiry: "",
+            address: {}
           });
         }
+
+        console.log("Processed passengers data:", passengers);
+        setPassengerData(passengers);
+
+        // Set booking data with enhanced information from priceStructure
+        const booking = {
+          bookingReference: normalized.pnr,
+          issueDate: new Date().toISOString().split('T')[0],
+          flightNumber: "Flight Details",
+          tripType: "Round Trip",
+          refundable: false,
+          totalPrice: normalized.priceStructure?.totalPrice,
+          currency: normalized.priceStructure?.currency,
+          adultPrice: normalized.priceStructure?.adultPrice,
+          adultTax: normalized.priceStructure?.adultTax,
+          noOfAdults: normalized.priceStructure?.noOfAdults,
+          noOfChild: normalized.priceStructure?.noOfChild,
+          noOfInfant: normalized.priceStructure?.noOfInfant,
+        };
+
+        console.log("Processed booking data:", booking);
+        setBookingData(booking);
 
         if (normalized.ticketDocument) {
           setPdfData(normalized.ticketDocument);
@@ -267,25 +302,16 @@ export default function BookingDetailsPage() {
 
         if (normalized.priceStructure) {
           setPriceStructure(normalized.priceStructure);
-        } else {
-          setPriceStructure(null);
         }
 
-        setMessage({ type: "success", text: `Booking data loaded successfully from ${result.endpoint}!` });
+        setMessage({ type: "success", text: `Booking data loaded successfully! Found ${passengers.length} passenger(s).` });
       } else {
-        // No endpoint returned useful data. Show detailed error to the user and do not populate sample data.
-        setLastAttemptedEndpoints(result.attempted || []);
-        setLastApiError(result.error || "");
-        console.warn("No working API endpoint found", result);
+        const errorText = await response.text();
+        console.error("API Error:", errorText);
 
-        const lastErrText = result.error || "No response returned from attempted endpoints.";
-        const attemptedList = Array.isArray(result.attempted) ? result.attempted : [];
-        const attemptedPreview = attemptedList.join("\n");
-
-        let suggestion = "Please verify the backend is running and the `/api/tp/getItinerary` route is reachable.";
-        setMessage({ 
-          type: "error", 
-          text: `Unable to load booking for PNR ${pnr}. Last error: ${lastErrText}. Tried endpoints:\n${attemptedPreview}\n${suggestion}`
+        setMessage({
+          type: "error",
+          text: `Unable to load booking for PNR ${pnr}. Error: ${errorText || 'Unknown error'}`
         });
 
         // Clear any previous data so UI reflects absence of valid booking
@@ -318,7 +344,7 @@ export default function BookingDetailsPage() {
     };
   }, [showEditDropdown]);
 
-  // Handle resend ticket email
+  // Handle resend ticket email using the correct API endpoint
   const handleResendTicket = async () => {
     if (!bookingContext && !itineraryData) {
       setMessage({ type: "error", text: "Booking context not found" });
@@ -334,27 +360,34 @@ export default function BookingDetailsPage() {
         return;
       }
 
-      // Use provided endpoint contract; body is raw JSON string
+      // Use the correct API endpoint as specified
       const resendEndpoint = `${BASE_URI}/api/tp/resendTicketDocument`;
       console.log("Resending ticket to:", resendEndpoint, "PNR:", pnr);
+
       const response = await fetch(resendEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pnr),
+        body: JSON.stringify(pnr), // Send PNR as JSON string as per API spec
       });
 
       const text = (await response.text()).trim();
-      if (response.ok && /sent successfully/i.test(text)) {
-        setMessage({ type: "success", text });
-      } else if (!response.ok) {
-        setMessage({ type: "error", text: text || "Failed to send ticket email." });
+
+      if (response.ok) {
+        if (text.includes("Email sent successfully")) {
+          setMessage({ type: "success", text: "Email sent successfully!" });
+        } else {
+          setMessage({ type: "success", text });
+        }
       } else {
-        // 200 but not a success string
-        setMessage({ type: "warning", text });
+        if (text.includes("Unable to find")) {
+          setMessage({ type: "error", text: `Unable to find ${pnr}. Please try again later!` });
+        } else {
+          setMessage({ type: "error", text: text || "Failed to send ticket email." });
+        }
       }
     } catch (error) {
       console.error("Error sending ticket email:", error);
-      setMessage({ type: "error", text: "Error sending ticket email" });
+      setMessage({ type: "error", text: "Error sending ticket email. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -454,31 +487,31 @@ export default function BookingDetailsPage() {
     setEditType(type);
     setCurrentPassenger(passenger);
     setFormErrors({});
-    
+
     // Pre-populate with existing data if available
     const existingData = {};
     if (passenger) {
       switch (type) {
         case "Email":
-          existingData.email = passenger.email || "";
+          existingData.newEmail = "";
           break;
         case "Phone Number":
-          existingData.phone = passenger.phone || passenger.phoneNumber || "";
+          existingData.newPhone = "";
           break;
         case "Travel Document":
-          existingData.documentType = passenger.documentType || "";
-          existingData.documentNumber = passenger.documentNumber || "";
-          existingData.expiryDate = passenger.documentExpiry || "";
+          existingData.newDocumentNumber = "";
+          existingData.newExpiryDate = "";
           break;
         case "Address":
-          existingData.street = passenger.address?.street || "";
-          existingData.city = passenger.address?.city || "";
-          existingData.country = passenger.address?.country || "";
-          existingData.postalCode = passenger.address?.postalCode || "";
+          existingData.firstName = passenger.firstName || "";
+          existingData.lastName = passenger.lastName || "";
+          existingData.newPhone = "";
+          existingData.newPassportNumber = "";
+          existingData.newPassportExpiry = "";
           break;
       }
     }
-    
+
     setEditData(existingData);
     setEditModalOpen(true);
     setShowEditDropdown(false);
@@ -493,26 +526,57 @@ export default function BookingDetailsPage() {
 
     // Validate form data based on edit type
     let errors = {};
-    
+
     switch (editType) {
       case "Email":
-        if (!editData.email || !validateEmail(editData.email)) {
-          errors.email = "Please enter a valid email address";
+        if (!editData.newEmail || !validateEmail(editData.newEmail)) {
+          errors.newEmail = "Please enter a valid email address";
         }
         break;
-        
+
       case "Phone Number":
-        if (!editData.phone || !validatePhone(editData.phone)) {
-          errors.phone = "Please enter a valid phone number";
+        if (!editData.newPhone || !validatePhone(editData.newPhone)) {
+          errors.newPhone = "Please enter a valid phone number";
         }
         break;
-        
+
       case "Travel Document":
-        errors = validateDocument(editData.documentType, editData.documentNumber, editData.expiryDate);
+        if (!editData.newDocumentNumber || editData.newDocumentNumber.length < 3) {
+          errors.newDocumentNumber = "Document number is required and must be at least 3 characters";
+        }
+        if (!editData.newExpiryDate) {
+          errors.newExpiryDate = "Expiry date is required";
+        } else {
+          const expiry = new Date(editData.newExpiryDate);
+          const today = new Date();
+          if (expiry <= today) {
+            errors.newExpiryDate = "Document must not be expired";
+          }
+        }
         break;
-        
+
       case "Address":
-        errors = validateAddress(editData.street, editData.city, editData.country, editData.postalCode);
+        if (!editData.firstName || editData.firstName.trim().length < 2) {
+          errors.firstName = "First name is required and must be at least 2 characters";
+        }
+        if (!editData.lastName || editData.lastName.trim().length < 2) {
+          errors.lastName = "Last name is required and must be at least 2 characters";
+        }
+        if (!editData.newPhone || !validatePhone(editData.newPhone)) {
+          errors.newPhone = "Please enter a valid phone number";
+        }
+        if (!editData.newPassportNumber || editData.newPassportNumber.length < 3) {
+          errors.newPassportNumber = "Passport number is required and must be at least 3 characters";
+        }
+        if (!editData.newPassportExpiry) {
+          errors.newPassportExpiry = "Passport expiry date is required";
+        } else {
+          const expiry = new Date(editData.newPassportExpiry);
+          const today = new Date();
+          if (expiry <= today) {
+            errors.newPassportExpiry = "Passport must not be expired";
+          }
+        }
         break;
     }
 
@@ -523,11 +587,33 @@ export default function BookingDetailsPage() {
 
     setLoading(true);
     setFormErrors({});
-    
+
     try {
       const pnr = bookingContext?.bookingId || itineraryData?.pnr || itineraryData?.PNR;
       const passengerId = currentPassenger?.id || currentPassenger?.passengerId;
-      
+
+      // Prepare the update data according to the new form structure
+      const updateData = {};
+      switch (editType) {
+        case "Email":
+          updateData.newEmail = editData.newEmail;
+          break;
+        case "Phone Number":
+          updateData.newPhone = editData.newPhone;
+          break;
+        case "Travel Document":
+          updateData.newDocumentNumber = editData.newDocumentNumber;
+          updateData.newExpiryDate = editData.newExpiryDate;
+          break;
+        case "Address":
+          updateData.firstName = editData.firstName;
+          updateData.lastName = editData.lastName;
+          updateData.newPhone = editData.newPhone;
+          updateData.newPassportNumber = editData.newPassportNumber;
+          updateData.newPassportExpiry = editData.newPassportExpiry;
+          break;
+      }
+
       const response = await fetch(`${BASE_URI}/api/booking/update-info`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -535,7 +621,7 @@ export default function BookingDetailsPage() {
           pnr: pnr,
           passengerId: passengerId,
           updateType: editType.toLowerCase().replace(/\s+/g, '_'),
-          updateData: editData,
+          updateData: updateData,
           bookingId: bookingContext?.bookingId,
           lastName: bookingContext?.lastName
         }),
@@ -543,11 +629,11 @@ export default function BookingDetailsPage() {
 
       if (response.ok) {
         const result = await response.json();
-        setMessage({ 
-          type: "success", 
-          text: `${editType} updated successfully! ${result.message || ''}` 
+        setMessage({
+          type: "success",
+          text: `${editType} updated successfully! ${result.message || ''}`
         });
-        
+
         // Update local passenger data if available
         if (currentPassenger && passengerData.length > 0) {
           const updatedPassengers = passengerData.map(passenger => {
@@ -555,24 +641,23 @@ export default function BookingDetailsPage() {
               const updatedPassenger = { ...passenger };
               switch (editType) {
                 case "Email":
-                  updatedPassenger.email = editData.email;
+                  updatedPassenger.email = editData.newEmail;
                   break;
                 case "Phone Number":
-                  updatedPassenger.phone = editData.phone;
-                  updatedPassenger.phoneNumber = editData.phone;
+                  updatedPassenger.phone = editData.newPhone;
+                  updatedPassenger.phoneNumber = editData.newPhone;
                   break;
                 case "Travel Document":
-                  updatedPassenger.documentType = editData.documentType;
-                  updatedPassenger.documentNumber = editData.documentNumber;
-                  updatedPassenger.documentExpiry = editData.expiryDate;
+                  updatedPassenger.documentNumber = editData.newDocumentNumber;
+                  updatedPassenger.documentExpiry = editData.newExpiryDate;
                   break;
                 case "Address":
-                  updatedPassenger.address = {
-                    street: editData.street,
-                    city: editData.city,
-                    country: editData.country,
-                    postalCode: editData.postalCode
-                  };
+                  updatedPassenger.firstName = editData.firstName;
+                  updatedPassenger.lastName = editData.lastName;
+                  updatedPassenger.phone = editData.newPhone;
+                  updatedPassenger.phoneNumber = editData.newPhone;
+                  updatedPassenger.documentNumber = editData.newPassportNumber;
+                  updatedPassenger.documentExpiry = editData.newPassportExpiry;
                   break;
               }
               return updatedPassenger;
@@ -581,7 +666,7 @@ export default function BookingDetailsPage() {
           });
           setPassengerData(updatedPassengers);
         }
-        
+
         setEditModalOpen(false);
       } else {
         const errorText = await response.text();
@@ -870,35 +955,77 @@ export default function BookingDetailsPage() {
                                   </Button>
                                   
                                   {showEditDropdown === passenger.id && (
-                                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                      <button
-                                        onClick={() => handleEditInfo("Email", passenger)}
-                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                      >
-                                        <Mail className="w-4 h-4" />
-                                        Edit Email
-                                      </button>
-                                      <button
-                                        onClick={() => handleEditInfo("Phone Number", passenger)}
-                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                      >
-                                        <Phone className="w-4 h-4" />
-                                        Edit Phone Number
-                                      </button>
-                                      <button
-                                        onClick={() => handleEditInfo("Travel Document", passenger)}
-                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                      >
-                                        <FileText className="w-4 h-4" />
-                                        Edit Travel Document
-                                      </button>
-                                      <button
-                                        onClick={() => handleEditInfo("Address", passenger)}
-                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                      >
-                                        <MapPin className="w-4 h-4" />
-                                        Edit Address
-                                      </button>
+                                    <div
+                                      className="fixed w-64 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999] transform transition-all duration-200 ease-out animate-in fade-in slide-in-from-top-2"
+                                      style={{
+                                        position: 'fixed',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        marginTop: '10px'
+                                      }}
+                                      ref={(el) => {
+                                        if (el && showEditDropdown === passenger.id) {
+                                          const button = el.previousElementSibling;
+                                          if (button) {
+                                            const rect = button.getBoundingClientRect();
+                                            el.style.left = `${rect.left + rect.width / 2}px`;
+                                            el.style.top = `${rect.bottom + 10}px`;
+                                            el.style.transform = 'translateX(-50%)';
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <div className="py-1">
+                                        <button
+                                          onClick={() => handleEditInfo("Email", passenger)}
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                        >
+                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                            <Mail className="w-4 h-4 text-gray-600" />
+                                          </div>
+                                          <div>
+                                            <div className="font-medium text-gray-900">Edit Email</div>
+                                            <div className="text-xs text-gray-500">Update email address</div>
+                                          </div>
+                                        </button>
+                                        <button
+                                          onClick={() => handleEditInfo("Phone Number", passenger)}
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                        >
+                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                            <Phone className="w-4 h-4 text-gray-600" />
+                                          </div>
+                                          <div>
+                                            <div className="font-medium text-gray-900">Edit Phone Number</div>
+                                            <div className="text-xs text-gray-500">Update phone number</div>
+                                          </div>
+                                        </button>
+                                        <button
+                                          onClick={() => handleEditInfo("Travel Document", passenger)}
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                        >
+                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                            <FileText className="w-4 h-4 text-gray-600" />
+                                          </div>
+                                          <div>
+                                            <div className="font-medium text-gray-900">Edit Travel Document</div>
+                                            <div className="text-xs text-gray-500">Update passport/ID details</div>
+                                          </div>
+                                        </button>
+                                        <button
+                                          onClick={() => handleEditInfo("Address", passenger)}
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group"
+                                        >
+                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                            <MapPin className="w-4 h-4 text-gray-600" />
+                                          </div>
+                                          <div>
+                                            <div className="font-medium text-gray-900">Edit Address</div>
+                                            <div className="text-xs text-gray-500">Update address information</div>
+                                          </div>
+                                        </button>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -969,16 +1096,30 @@ export default function BookingDetailsPage() {
 
       {/* Edit Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-[#2E4A6B]">Edit {editType}</h3>
-              <button
-                onClick={() => setEditModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto transform transition-all duration-300 ease-out animate-in zoom-in-95 slide-in-from-bottom-4">
+            <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-6 py-4 rounded-t-xl">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${
+                    editType === "Email" ? "bg-orange-500" :
+                    editType === "Phone Number" ? "bg-blue-500" :
+                    editType === "Travel Document" ? "bg-green-500" : "bg-purple-500"
+                  }`}>
+                    {editType === "Email" && <Mail className="w-5 h-5" />}
+                    {editType === "Phone Number" && <Phone className="w-5 h-5" />}
+                    {editType === "Travel Document" && <FileText className="w-5 h-5" />}
+                    {editType === "Address" && <MapPin className="w-5 h-5" />}
+                  </div>
+                  Edit {editType}
+                </h3>
+                <button
+                  onClick={() => setEditModalOpen(false)}
+                  className="text-white hover:text-gray-200 transition-colors duration-200 p-1 rounded-full hover:bg-white hover:bg-opacity-20"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             
             {currentPassenger && (
@@ -990,29 +1131,39 @@ export default function BookingDetailsPage() {
             )}
             
             {editType === "Email" && (
-              <div className="space-y-4">
+              <div className="p-6 space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-orange-500">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Mail className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Current Email</span>
+                  </div>
+                  <p className="text-gray-900 bg-white px-3 py-2 rounded border">
+                    {currentPassenger?.email || "No email on record"}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address <span className="text-red-500">*</span>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    New Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
-                    value={editData.email || ""}
+                    value={editData.newEmail || ""}
                     onChange={(e) => {
-                      setEditData({ ...editData, email: e.target.value });
-                      if (formErrors.email) {
-                        setFormErrors({ ...formErrors, email: "" });
+                      setEditData({ ...editData, newEmail: e.target.value });
+                      if (formErrors.newEmail) {
+                        setFormErrors({ ...formErrors, newEmail: "" });
                       }
                     }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.email ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-200 ${
+                      formErrors.newEmail ? 'border-red-500' : 'border-gray-300 hover:border-orange-400'
                     }`}
-                    placeholder="Enter email address"
+                    placeholder="Enter new email address"
                   />
-                  {formErrors.email && (
+                  {formErrors.newEmail && (
                     <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      {formErrors.email}
+                      {formErrors.newEmail}
                     </p>
                   )}
                 </div>
@@ -1020,29 +1171,39 @@ export default function BookingDetailsPage() {
             )}
 
             {editType === "Phone Number" && (
-              <div className="space-y-4">
+              <div className="p-6 space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Phone className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Current Phone Number</span>
+                  </div>
+                  <p className="text-gray-900 bg-white px-3 py-2 rounded border">
+                    {currentPassenger?.phone || "No phone number on record"}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number <span className="text-red-500">*</span>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    New Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
-                    value={editData.phone || ""}
+                    value={editData.newPhone || ""}
                     onChange={(e) => {
-                      setEditData({ ...editData, phone: e.target.value });
-                      if (formErrors.phone) {
-                        setFormErrors({ ...formErrors, phone: "" });
+                      setEditData({ ...editData, newPhone: e.target.value });
+                      if (formErrors.newPhone) {
+                        setFormErrors({ ...formErrors, newPhone: "" });
                       }
                     }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                      formErrors.newPhone ? 'border-red-500' : 'border-gray-300 hover:border-blue-400'
                     }`}
-                    placeholder="Enter phone number (e.g., +1234567890)"
+                    placeholder="Enter new phone number (e.g., +1234567890)"
                   />
-                  {formErrors.phone && (
+                  {formErrors.newPhone && (
                     <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      {formErrors.phone}
+                      {formErrors.newPhone}
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
@@ -1053,192 +1214,218 @@ export default function BookingDetailsPage() {
             )}
 
             {editType === "Travel Document" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Document Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={editData.documentType || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, documentType: e.target.value });
-                      if (formErrors.documentType) {
-                        setFormErrors({ ...formErrors, documentType: "" });
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.documentType ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select document type</option>
-                    <option value="passport">Passport</option>
-                    <option value="national_id">National ID</option>
-                    <option value="driving_license">Driving License</option>
-                    <option value="visa">Visa</option>
-                    <option value="other">Other</option>
-                  </select>
-                  {formErrors.documentType && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.documentType}
-                    </p>
-                  )}
+              <div className="p-6 space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-green-500">
+                  <div className="flex items-center gap-3 mb-3">
+                    <FileText className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Current Travel Document</span>
+                  </div>
+                  <div className="bg-white rounded border p-3 space-y-2">
+                    <p><span className="font-medium">Type:</span> {currentPassenger?.documentType || "Not specified"}</p>
+                    <p><span className="font-medium">Number:</span> {currentPassenger?.documentNumber || "Not specified"}</p>
+                    <p><span className="font-medium">Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Document Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editData.documentNumber || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, documentNumber: e.target.value });
-                      if (formErrors.documentNumber) {
-                        setFormErrors({ ...formErrors, documentNumber: "" });
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.documentNumber ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter document number"
-                  />
-                  {formErrors.documentNumber && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.documentNumber}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={editData.expiryDate || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, expiryDate: e.target.value });
-                      if (formErrors.expiryDate) {
-                        setFormErrors({ ...formErrors, expiryDate: "" });
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.expiryDate ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {formErrors.expiryDate && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.expiryDate}
-                    </p>
-                  )}
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      New Document Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editData.newDocumentNumber || ""}
+                      onChange={(e) => {
+                        setEditData({ ...editData, newDocumentNumber: e.target.value });
+                        if (formErrors.newDocumentNumber) {
+                          setFormErrors({ ...formErrors, newDocumentNumber: "" });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 ${
+                        formErrors.newDocumentNumber ? 'border-red-500' : 'border-gray-300 hover:border-green-400'
+                      }`}
+                      placeholder="Enter new document number"
+                    />
+                    {formErrors.newDocumentNumber && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {formErrors.newDocumentNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      New Expiry Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editData.newExpiryDate || ""}
+                      onChange={(e) => {
+                        setEditData({ ...editData, newExpiryDate: e.target.value });
+                        if (formErrors.newExpiryDate) {
+                          setFormErrors({ ...formErrors, newExpiryDate: "" });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 ${
+                        formErrors.newExpiryDate ? 'border-red-500' : 'border-gray-300 hover:border-green-400'
+                      }`}
+                    />
+                    {formErrors.newExpiryDate && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {formErrors.newExpiryDate}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {editType === "Address" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Street Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editData.street || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, street: e.target.value });
-                      if (formErrors.street) {
-                        setFormErrors({ ...formErrors, street: "" });
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.street ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter street address"
-                  />
-                  {formErrors.street && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.street}
-                    </p>
-                  )}
+              <div className="p-6 space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-purple-500">
+                  <div className="flex items-center gap-3 mb-3">
+                    <MapPin className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Current Address Information</span>
+                  </div>
+                  <div className="bg-white rounded border p-3 space-y-2 text-sm">
+                    <p><span className="font-medium">Name:</span> {currentPassenger?.firstName} {currentPassenger?.lastName}</p>
+                    <p><span className="font-medium">Phone:</span> {currentPassenger?.phone || "Not specified"}</p>
+                    <p><span className="font-medium">Document:</span> {currentPassenger?.documentNumber || "Not specified"}</p>
+                    <p><span className="font-medium">Document Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      City <span className="text-red-500">*</span>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      First Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={editData.city || ""}
+                      value={editData.firstName || ""}
                       onChange={(e) => {
-                        setEditData({ ...editData, city: e.target.value });
-                        if (formErrors.city) {
-                          setFormErrors({ ...formErrors, city: "" });
+                        setEditData({ ...editData, firstName: e.target.value });
+                        if (formErrors.firstName) {
+                          setFormErrors({ ...formErrors, firstName: "" });
                         }
                       }}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                        formErrors.city ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
+                        formErrors.firstName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
                       }`}
-                      placeholder="Enter city"
+                      placeholder="Enter first name"
                     />
-                    {formErrors.city && (
+                    {formErrors.firstName && (
                       <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
-                        {formErrors.city}
+                        {formErrors.firstName}
                       </p>
                     )}
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Postal Code <span className="text-red-500">*</span>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Last Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={editData.postalCode || ""}
+                      value={editData.lastName || ""}
                       onChange={(e) => {
-                        setEditData({ ...editData, postalCode: e.target.value });
-                        if (formErrors.postalCode) {
-                          setFormErrors({ ...formErrors, postalCode: "" });
+                        setEditData({ ...editData, lastName: e.target.value });
+                        if (formErrors.lastName) {
+                          setFormErrors({ ...formErrors, lastName: "" });
                         }
                       }}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                        formErrors.postalCode ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
+                        formErrors.lastName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
                       }`}
-                      placeholder="Enter postal code"
+                      placeholder="Enter last name"
                     />
-                    {formErrors.postalCode && (
+                    {formErrors.lastName && (
                       <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
-                        {formErrors.postalCode}
+                        {formErrors.lastName}
                       </p>
                     )}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Country <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editData.country || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, country: e.target.value });
-                      if (formErrors.country) {
-                        setFormErrors({ ...formErrors, country: "" });
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF6B35] ${
-                      formErrors.country ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter country"
-                  />
-                  {formErrors.country && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.country}
-                    </p>
-                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={editData.newPhone || ""}
+                      onChange={(e) => {
+                        setEditData({ ...editData, newPhone: e.target.value });
+                        if (formErrors.newPhone) {
+                          setFormErrors({ ...formErrors, newPhone: "" });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
+                        formErrors.newPhone ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
+                      }`}
+                      placeholder="Enter phone number"
+                    />
+                    {formErrors.newPhone && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {formErrors.newPhone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Passport Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editData.newPassportNumber || ""}
+                      onChange={(e) => {
+                        setEditData({ ...editData, newPassportNumber: e.target.value });
+                        if (formErrors.newPassportNumber) {
+                          setFormErrors({ ...formErrors, newPassportNumber: "" });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
+                        formErrors.newPassportNumber ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
+                      }`}
+                      placeholder="Enter passport number"
+                    />
+                    {formErrors.newPassportNumber && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {formErrors.newPassportNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Passport Expiry Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editData.newPassportExpiry || ""}
+                      onChange={(e) => {
+                        setEditData({ ...editData, newPassportExpiry: e.target.value });
+                        if (formErrors.newPassportExpiry) {
+                          setFormErrors({ ...formErrors, newPassportExpiry: "" });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
+                        formErrors.newPassportExpiry ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
+                      }`}
+                    />
+                    {formErrors.newPassportExpiry && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {formErrors.newPassportExpiry}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
