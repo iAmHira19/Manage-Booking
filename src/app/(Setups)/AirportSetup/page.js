@@ -60,7 +60,7 @@ const Page = () => {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   // FIXED: Removed Form.useWatch to prevent unnecessary re-renders on every form change
   // Only watch specific field if needed

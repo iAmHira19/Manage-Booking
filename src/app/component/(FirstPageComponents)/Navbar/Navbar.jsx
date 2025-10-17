@@ -126,7 +126,7 @@ const Navbar = ({ isMobile }) => {
         setUserGroupContext(sessionStorage.getItem("userGroup"));
       }
     }
-  }, [checkSessionStorage]);
+  }, [checkSessionStorage, setCheckSessionStorage, setIsSignedIn, setUsernameContext, setUserIdContext, setUserGroupContext]);
   useEffect(() => {
     if (session && session.user?.user_Name && session.user?.usr_Group) {
       setUsernameContext(session?.user?.user_Name);
@@ -138,7 +138,7 @@ const Navbar = ({ isMobile }) => {
       setIsSignedIn(true);
       signInContext();
     }
-  }, [session]);
+  }, [session, setUsernameContext, setUserIdContext, setUserGroupContext, setIsSignedIn, signInContext]);
 
   // Formiks
   const signInFormik = useFormik({
@@ -303,7 +303,7 @@ const Navbar = ({ isMobile }) => {
       >
         <li >
           <Link
-            href="/manage_booking"
+            href={isSignedIn ? "/manage-booking" : "/manage_booking"}
             className="text-blue-900 text-base font-gotham uppercase"
           >
             Manage Booking

@@ -12,8 +12,8 @@ export default function BookingDetailsPage() {
   const [activeMenuItem, setActiveMenuItem] = useState("Change your Plan");
   const [logoUrl, setLogoUrl] = useState("/img/logo.png");
   const fileInputRef = useRef(null);
-  
-  // New state for enhanced functionality
+
+  // State for enhanced functionality
   const [bookingContext, setBookingContext] = useState(null);
   const [showEditDropdown, setShowEditDropdown] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -23,7 +23,7 @@ export default function BookingDetailsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [formErrors, setFormErrors] = useState({});
   const [currentPassenger, setCurrentPassenger] = useState(null);
-  
+
   // API data states
   const [itineraryData, setItineraryData] = useState(null);
   const [passengerData, setPassengerData] = useState([]);
@@ -31,72 +31,12 @@ export default function BookingDetailsPage() {
   const [pdfData, setPdfData] = useState(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [pnrInput, setPnrInput] = useState("");
-  const [lastAttemptedEndpoints, setLastAttemptedEndpoints] = useState([]);
-  const [lastApiError, setLastApiError] = useState("");
   const [priceStructure, setPriceStructure] = useState(null);
-  
-  // Prefer explicit env, fallback to common local dev port
+
+  // Base URI for API calls
   const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
-  const ALT_BASE_URI = "http://localhost:8086";
 
-  const parsePathList = (envValue, pnr, isPost = false) => {
-    if (envValue && typeof envValue === 'string') {
-      const rawPaths = envValue.split(',').map(p => p.trim()).filter(Boolean);
-      return rawPaths.map(p => {
-        const hasQuery = p.includes('?');
-        const url = `${BASE_URI}${p.startsWith('/') ? '' : '/'}${p}${hasQuery ? '' : `?PNR=${encodeURIComponent(pnr)}`}`;
-        return url;
-      });
-    }
-    return null;
-  };
-
-  // API endpoint discovery function
-  const discoverApiEndpoint = async (endpoints, method = "GET", body = null) => {
-    let lastError = null;
-    const attempted = [];
-
-    for (const endpoint of endpoints) {
-      attempted.push(endpoint);
-      try {
-        console.log(`Trying ${method} endpoint: ${endpoint}`);
-        const response = await fetch(endpoint, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: body ? JSON.stringify(body) : undefined,
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`Success with endpoint: ${endpoint}`, data);
-          return { success: true, data, endpoint };
-        } else {
-          const errorText = await response.text();
-          console.log(`Endpoint ${endpoint} failed:`, errorText);
-          lastError = errorText || `HTTP ${response.status}`;
-        }
-      } catch (err) {
-        console.log(`Endpoint ${endpoint} error:`, err.message);
-        lastError = err.message;
-      }
-    }
-
-    return { success: false, error: lastError, attempted };
-  };
-
-  const handleLogoUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setLogoUrl(imageUrl);
-    }
-  };
-
-  const handleLogoClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Load booking context from session storage and fetch itinerary data
+  // Load booking context from session storage
   useEffect(() => {
     const loadBookingData = async () => {
       try {
@@ -105,18 +45,15 @@ export default function BookingDetailsPage() {
           const parsedContext = JSON.parse(context);
           console.log("Loaded booking context:", parsedContext);
           setBookingContext(parsedContext);
-          // Prefill PNR input and fetch itinerary data using PNR
           setPnrInput(parsedContext.bookingId || '');
           await fetchItineraryData(parsedContext.bookingId);
         } else {
-          // Try to get PNR from URL params as fallback
           const urlParams = new URLSearchParams(window.location.search);
           const pnr = urlParams.get('PNR');
           if (pnr) {
             console.log("Using PNR from URL params:", pnr);
             await fetchItineraryData(pnr);
           } else {
-            // No PNR provided: stop loading and prompt user to enter PNR
             console.log("No booking reference found");
             setMessage({ type: "info", text: "Enter a valid PNR to load booking details." });
             setDataLoading(false);
@@ -132,17 +69,11 @@ export default function BookingDetailsPage() {
     loadBookingData();
   }, []);
 
-  // Dynamic passenger data from API
-  const getPassengerData = (pnr, lastName) => {
-    // This will be populated from API response
-    return [];
-  };
-
-  // NOTE: Removed sample data helper. Booking details must come from API via PNR.
-
   // Fetch itinerary data from API using the specific endpoint
   const fetchItineraryData = async (pnr) => {
     setDataLoading(true);
+    setMessage({ type: "", text: "" });
+
     try {
       // Use the specific API endpoint provided
       const itineraryEndpoint = `${BASE_URI}/api/tp/getItinerary?PNR=${encodeURIComponent(pnr)}`;
@@ -156,193 +87,174 @@ export default function BookingDetailsPage() {
 
       if (response.ok) {
         const apiData = await response.json();
-        console.log("Itinerary data received:", apiData);
+        console.log("Complete API response:", apiData);
+        console.log("API response type:", typeof apiData);
+        console.log("API response keys:", apiData ? Object.keys(apiData) : 'null');
 
-        // Handle the actual API response structure from Postman
-        const normalized = {
-          pnr: apiData?.PNR,
-          itinerary: apiData?.ItineraryDetails || apiData, // Fallback to entire response if no ItineraryDetails
-          ticketDocument: apiData?.TicketDocument,
-          priceStructure: apiData?.priceStructure,
-        };
+        // Handle different possible response structures
+        let reservationData = null;
+        let travelers = [];
+        let flightSegments = [];
+        let priceStructure = null;
+        let pnrValue = pnr;
 
-        // Set base datasets
-        setItineraryData(normalized.itinerary);
+        // Check if the response has the expected Travelport structure
+        if (apiData?.ReservationResponse?.Reservation) {
+          // This is the Travelport structure
+          reservationData = apiData.ReservationResponse.Reservation;
+          pnrValue = reservationData?.Receipt?.[0]?.Confirmation?.Locator?.value || pnr;
+          travelers = reservationData?.Traveler || [];
+          priceStructure = reservationData?.Offer?.[0]?.Price;
 
-        // Extract passenger data from the actual API response
-        // Since the API response doesn't have a separate ItineraryDetails with passengers,
-        // we'll create passenger data from the available information
-        const passengers = [];
+          // Extract flight segments from all products
+          const products = reservationData?.Offer?.[0]?.Product || [];
+          flightSegments = products.map(product => product.FlightSegment?.[0]?.Flight).filter(Boolean);
 
-        // If we have priceStructure with passenger counts, create passenger entries
-        if (normalized.priceStructure) {
-          const priceStruct = normalized.priceStructure;
-          const adultCount = parseInt(priceStruct.noOfAdults) || 0;
-          const childCount = parseInt(priceStruct.noOfChild) || 0;
-          const infantCount = parseInt(priceStruct.noOfInfant) || 0;
+          console.log("Travelport structure detected");
+          console.log("Found travelers:", travelers.length);
+          console.log("Found flight segments:", flightSegments.length);
+        } else if (apiData?.PNR || apiData?.ItineraryDetails) {
+          // This might be a different structure
+          pnrValue = apiData.PNR || pnr;
+          travelers = apiData?.ItineraryDetails?.passengers || [];
+          flightSegments = apiData?.ItineraryDetails?.flights || [];
+          priceStructure = apiData?.priceStructure;
+
+          console.log("Alternative structure detected");
+        } else if (Array.isArray(apiData)) {
+          // Handle array response
+          console.log("Array response detected");
+          // If it's an array, take the first item
+          const firstItem = apiData[0];
+          if (firstItem) {
+            travelers = firstItem.passengers || [];
+            flightSegments = firstItem.flights || [];
+            priceStructure = firstItem.priceStructure;
+            pnrValue = firstItem.PNR || pnr;
+          }
+        } else {
+          // Try to extract any available data
+          console.log("Unknown structure, trying to extract any available data");
+          travelers = [];
+          flightSegments = [];
+          priceStructure = apiData?.priceStructure;
+          pnrValue = apiData?.PNR || pnr;
+        }
+
+        // If we still don't have travelers but have price structure, create default passengers
+        if (travelers.length === 0 && priceStructure) {
+          const adultCount = priceStructure.noOfAdults || 1;
+          const childCount = priceStructure.noOfChild || 0;
+          const infantCount = priceStructure.noOfInfant || 0;
+
+          console.log("Creating passengers from price structure:", { adultCount, childCount, infantCount });
 
           // Create adult passengers
           for (let i = 0; i < adultCount; i++) {
-            passengers.push({
-              id: i + 1,
-              firstName: `Adult`,
-              lastName: `Passenger ${i + 1}`,
-              fullName: `Adult Passenger ${i + 1}`,
-              email: "",
-              phone: "",
-              airlineBookingRef: normalized.pnr,
-              origin: "N/A",
-              destination: "N/A",
-              departureTime: "",
-              arrivalTime: "",
-              baggage: "Standard",
-              class: "Economy",
-              documentType: "passport",
-              documentNumber: "",
-              documentExpiry: "",
-              address: {}
+            travelers.push({
+              id: `adult_${i + 1}`,
+              PersonName: { Given: "Adult", Surname: `Passenger ${i + 1}` },
+              Email: [{ value: "" }],
+              Telephone: [{ countryAccessCode: "", phoneNumber: "" }],
+              TravelDocument: [{ number: "", expiryDate: "" }]
             });
           }
 
           // Create child passengers
           for (let i = 0; i < childCount; i++) {
-            passengers.push({
-              id: adultCount + i + 1,
-              firstName: `Child`,
-              lastName: `Passenger ${adultCount + i + 1}`,
-              fullName: `Child Passenger ${adultCount + i + 1}`,
-              email: "",
-              phone: "",
-              airlineBookingRef: normalized.pnr,
-              origin: "N/A",
-              destination: "N/A",
-              departureTime: "",
-              arrivalTime: "",
-              baggage: "Standard",
-              class: "Economy",
-              documentType: "passport",
-              documentNumber: "",
-              documentExpiry: "",
-              address: {}
-            });
-          }
-
-          // Create infant passengers
-          for (let i = 0; i < infantCount; i++) {
-            passengers.push({
-              id: adultCount + childCount + i + 1,
-              firstName: `Infant`,
-              lastName: `Passenger ${adultCount + childCount + i + 1}`,
-              fullName: `Infant Passenger ${adultCount + childCount + i + 1}`,
-              email: "",
-              phone: "",
-              airlineBookingRef: normalized.pnr,
-              origin: "N/A",
-              destination: "N/A",
-              departureTime: "",
-              arrivalTime: "",
-              baggage: "Standard",
-              class: "Economy",
-              documentType: "passport",
-              documentNumber: "",
-              documentExpiry: "",
-              address: {}
+            travelers.push({
+              id: `child_${i + 1}`,
+              PersonName: { Given: "Child", Surname: `Passenger ${adultCount + i + 1}` },
+              Email: [{ value: "" }],
+              Telephone: [{ countryAccessCode: "", phoneNumber: "" }],
+              TravelDocument: [{ number: "", expiryDate: "" }]
             });
           }
         }
 
-        // If no passengers created from priceStructure, create at least one default passenger
-        if (passengers.length === 0) {
-          passengers.push({
-            id: 1,
-            firstName: "Main",
-            lastName: "Passenger",
-            fullName: "Main Passenger",
-            email: "",
-            phone: "",
-            airlineBookingRef: normalized.pnr,
-            origin: "N/A",
-            destination: "N/A",
-            departureTime: "",
-            arrivalTime: "",
+        // Process passenger data
+        const processedPassengers = travelers.map((traveler, index) => {
+          const personName = traveler.PersonName || {};
+          const telephone = traveler.Telephone?.[0];
+          const email = traveler.Email?.[0];
+          const travelDoc = traveler.TravelDocument?.[0];
+
+          // Extract flight information from segments
+          const firstFlight = flightSegments[0];
+          const lastFlight = flightSegments[flightSegments.length - 1];
+
+          return {
+            id: traveler.id || index + 1,
+            firstName: personName.Given || "Passenger",
+            lastName: personName.Surname || `${index + 1}`,
+            fullName: `${personName.Given || "Passenger"} ${personName.Surname || `${index + 1}`}`.trim(),
+            email: email?.value || "",
+            phone: telephone ? `${telephone.countryAccessCode || ""}${telephone.phoneNumber || ""}`.trim() : "",
+            airlineBookingRef: pnrValue,
+            origin: firstFlight?.Departure?.location || "N/A",
+            destination: lastFlight?.Arrival?.location || "N/A",
+            departureTime: firstFlight ? `${firstFlight.Departure.date}T${firstFlight.Departure.time}` : "",
+            arrivalTime: lastFlight ? `${lastFlight.Arrival.date}T${lastFlight.Arrival.time}` : "",
             baggage: "Standard",
-            class: "Economy",
+            class: firstFlight?.FlightProduct?.[0]?.cabin || "Economy",
             documentType: "passport",
-            documentNumber: "",
-            documentExpiry: "",
+            documentNumber: travelDoc?.number || "",
+            documentExpiry: travelDoc?.expiryDate || "",
             address: {}
-          });
-        }
+          };
+        });
 
-        console.log("Processed passengers data:", passengers);
-        setPassengerData(passengers);
+        console.log("Final processed passengers:", processedPassengers);
+        setPassengerData(processedPassengers);
 
-        // Set booking data with enhanced information from priceStructure
-        const booking = {
-          bookingReference: normalized.pnr,
+        // Process booking data
+        const processedBooking = {
+          bookingReference: pnrValue,
           issueDate: new Date().toISOString().split('T')[0],
-          flightNumber: "Flight Details",
-          tripType: "Round Trip",
+          flightNumber: flightSegments?.map(segment => `${segment.carrier || 'XX'}${segment.number || '000'}`).join(", ") || "Flight Details",
+          tripType: flightSegments?.length > 1 ? "Round Trip" : "One Way",
           refundable: false,
-          totalPrice: normalized.priceStructure?.totalPrice,
-          currency: normalized.priceStructure?.currency,
-          adultPrice: normalized.priceStructure?.adultPrice,
-          adultTax: normalized.priceStructure?.adultTax,
-          noOfAdults: normalized.priceStructure?.noOfAdults,
-          noOfChild: normalized.priceStructure?.noOfChild,
-          noOfInfant: normalized.priceStructure?.noOfInfant,
+          totalPrice: priceStructure?.TotalPrice || priceStructure?.totalPrice,
+          currency: priceStructure?.CurrencyCode?.value || priceStructure?.currency,
+          adultPrice: priceStructure?.Base || priceStructure?.adultPrice,
+          adultTax: priceStructure?.TotalTaxes || priceStructure?.adultTax,
         };
 
-        console.log("Processed booking data:", booking);
-        setBookingData(booking);
+        console.log("Final processed booking:", processedBooking);
+        setBookingData(processedBooking);
 
-        if (normalized.ticketDocument) {
-          setPdfData(normalized.ticketDocument);
+        // Set other data
+        if (apiData?.TicketDocument) {
+          setPdfData(apiData.TicketDocument);
         }
 
-        if (normalized.priceStructure) {
-          setPriceStructure(normalized.priceStructure);
+        if (priceStructure) {
+          setPriceStructure(priceStructure);
         }
 
-        setMessage({ type: "success", text: `Booking data loaded successfully! Found ${passengers.length} passenger(s).` });
+        setMessage({
+          type: "success",
+          text: `Booking data loaded successfully! Found ${processedPassengers.length} passenger(s) and ${flightSegments?.length || 0} flight segment(s).`
+        });
       } else {
         const errorText = await response.text();
-        console.error("API Error:", errorText);
+        console.error("API Error Response:", errorText);
 
         setMessage({
           type: "error",
-          text: `Unable to load booking for PNR ${pnr}. Error: ${errorText || 'Unknown error'}`
+          text: `Unable to load booking for PNR ${pnr}. ${errorText || 'Please check if the PNR is correct.'}`
         });
-
-        // Clear any previous data so UI reflects absence of valid booking
-        setItineraryData(null);
-        setPassengerData([]);
-        setBookingData(null);
       }
     } catch (error) {
       console.error("Error fetching itinerary data:", error);
-      setMessage({ type: "error", text: `Error fetching itinerary data: ${error?.message || error}` });
-      setItineraryData(null);
-      setPassengerData([]);
-      setBookingData(null);
+      setMessage({
+        type: "error",
+        text: `Error fetching itinerary data: ${error?.message || 'Network error. Please try again.'}`
+      });
     } finally {
       setDataLoading(false);
     }
   };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showEditDropdown && !event.target.closest('.relative')) {
-        setShowEditDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showEditDropdown]);
 
   // Handle resend ticket email using the correct API endpoint
   const handleResendTicket = async () => {
@@ -353,21 +265,20 @@ export default function BookingDetailsPage() {
 
     setLoading(true);
     try {
-      const pnr = bookingContext?.bookingId || itineraryData?.pnr || itineraryData?.PNR;
+      const pnr = bookingContext?.bookingId || itineraryData?.pnr || bookingData?.bookingReference;
       if (!pnr) {
         setMessage({ type: "error", text: "PNR not found" });
         setLoading(false);
         return;
       }
 
-      // Use the correct API endpoint as specified
       const resendEndpoint = `${BASE_URI}/api/tp/resendTicketDocument`;
       console.log("Resending ticket to:", resendEndpoint, "PNR:", pnr);
 
       const response = await fetch(resendEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pnr), // Send PNR as JSON string as per API spec
+        body: JSON.stringify(pnr),
       });
 
       const text = (await response.text()).trim();
@@ -401,85 +312,26 @@ export default function BookingDetailsPage() {
     }
 
     try {
-      // Decode Base64 PDF and open in new window
       const pdfBlob = new Blob([Uint8Array.from(atob(pdfData), c => c.charCodeAt(0))], {
         type: 'application/pdf'
       });
-      
+
       const pdfUrl = URL.createObjectURL(pdfBlob);
       const ticketWindow = window.open(pdfUrl, '_blank');
-      
+
       if (!ticketWindow) {
         setMessage({ type: "error", text: "Please allow popups to view the ticket" });
         return;
       }
-      
-      // Clean up the URL after a delay
+
       setTimeout(() => {
         URL.revokeObjectURL(pdfUrl);
       }, 10000);
-      
+
     } catch (error) {
       console.error("Error opening PDF:", error);
       setMessage({ type: "error", text: "Error opening ticket PDF" });
     }
-  };
-
-  // Validation functions
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePhone = (phone) => {
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
-  };
-
-  const validateDocument = (documentType, documentNumber, expiryDate) => {
-    const errors = {};
-    
-    if (!documentType) {
-      errors.documentType = "Document type is required";
-    }
-    
-    if (!documentNumber || documentNumber.length < 3) {
-      errors.documentNumber = "Document number is required and must be at least 3 characters";
-    }
-    
-    if (!expiryDate) {
-      errors.expiryDate = "Expiry date is required";
-    } else {
-      const expiry = new Date(expiryDate);
-      const today = new Date();
-      if (expiry <= today) {
-        errors.expiryDate = "Document must not be expired";
-      }
-    }
-    
-    return errors;
-  };
-
-  const validateAddress = (street, city, country, postalCode) => {
-    const errors = {};
-    
-    if (!street || street.trim().length < 5) {
-      errors.street = "Street address is required and must be at least 5 characters";
-    }
-    
-    if (!city || city.trim().length < 2) {
-      errors.city = "City is required and must be at least 2 characters";
-    }
-    
-    if (!country || country.trim().length < 2) {
-      errors.country = "Country is required and must be at least 2 characters";
-    }
-    
-    if (!postalCode || postalCode.trim().length < 3) {
-      errors.postalCode = "Postal code is required and must be at least 3 characters";
-    }
-    
-    return errors;
   };
 
   // Handle edit info dropdown
@@ -488,7 +340,6 @@ export default function BookingDetailsPage() {
     setCurrentPassenger(passenger);
     setFormErrors({});
 
-    // Pre-populate with existing data if available
     const existingData = {};
     if (passenger) {
       switch (type) {
@@ -524,18 +375,17 @@ export default function BookingDetailsPage() {
       return;
     }
 
-    // Validate form data based on edit type
     let errors = {};
 
     switch (editType) {
       case "Email":
-        if (!editData.newEmail || !validateEmail(editData.newEmail)) {
+        if (!editData.newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.newEmail)) {
           errors.newEmail = "Please enter a valid email address";
         }
         break;
 
       case "Phone Number":
-        if (!editData.newPhone || !validatePhone(editData.newPhone)) {
+        if (!editData.newPhone || !/^[\+]?[1-9][\d]{0,15}$/.test(editData.newPhone.replace(/[\s\-\(\)]/g, ''))) {
           errors.newPhone = "Please enter a valid phone number";
         }
         break;
@@ -562,7 +412,7 @@ export default function BookingDetailsPage() {
         if (!editData.lastName || editData.lastName.trim().length < 2) {
           errors.lastName = "Last name is required and must be at least 2 characters";
         }
-        if (!editData.newPhone || !validatePhone(editData.newPhone)) {
+        if (!editData.newPhone || !/^[\+]?[1-9][\d]{0,15}$/.test(editData.newPhone.replace(/[\s\-\(\)]/g, ''))) {
           errors.newPhone = "Please enter a valid phone number";
         }
         if (!editData.newPassportNumber || editData.newPassportNumber.length < 3) {
@@ -589,10 +439,9 @@ export default function BookingDetailsPage() {
     setFormErrors({});
 
     try {
-      const pnr = bookingContext?.bookingId || itineraryData?.pnr || itineraryData?.PNR;
-      const passengerId = currentPassenger?.id || currentPassenger?.passengerId;
+      const pnr = bookingContext?.bookingId || bookingData?.bookingReference;
+      const passengerId = currentPassenger?.id;
 
-      // Prepare the update data according to the new form structure
       const updateData = {};
       switch (editType) {
         case "Email":
@@ -634,7 +483,7 @@ export default function BookingDetailsPage() {
           text: `${editType} updated successfully! ${result.message || ''}`
         });
 
-        // Update local passenger data if available
+        // Update local passenger data
         if (currentPassenger && passengerData.length > 0) {
           const updatedPassengers = passengerData.map(passenger => {
             if (passenger.id === currentPassenger.id) {
@@ -645,7 +494,6 @@ export default function BookingDetailsPage() {
                   break;
                 case "Phone Number":
                   updatedPassenger.phone = editData.newPhone;
-                  updatedPassenger.phoneNumber = editData.newPhone;
                   break;
                 case "Travel Document":
                   updatedPassenger.documentNumber = editData.newDocumentNumber;
@@ -655,7 +503,6 @@ export default function BookingDetailsPage() {
                   updatedPassenger.firstName = editData.firstName;
                   updatedPassenger.lastName = editData.lastName;
                   updatedPassenger.phone = editData.newPhone;
-                  updatedPassenger.phoneNumber = editData.newPhone;
                   updatedPassenger.documentNumber = editData.newPassportNumber;
                   updatedPassenger.documentExpiry = editData.newPassportExpiry;
                   break;
@@ -685,10 +532,10 @@ export default function BookingDetailsPage() {
     if (!timeString) return "N/A";
     try {
       const date = new Date(timeString);
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       });
     } catch (e) {
       return timeString;
@@ -700,7 +547,7 @@ export default function BookingDetailsPage() {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
+      return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
         month: 'short'
@@ -709,15 +556,6 @@ export default function BookingDetailsPage() {
       return dateString;
     }
   };
-
-  // Debug logging
-  console.log("Booking Details Debug:", {
-    dataLoading,
-    bookingData,
-    passengerData,
-    itineraryData,
-    bookingContext
-  });
 
   // Show loading screen while fetching data
   if (dataLoading && !itineraryData) {
@@ -737,8 +575,8 @@ export default function BookingDetailsPage() {
   return (
     <div className="flex flex-col w-full">
       <div className="flex w-full justify-between bg-[#f8f9fa] relative min-h-screen gap-x-8">
-        
-        {/* Sidebar: Cherry Return style */}
+
+        {/* Sidebar */}
         <TermsSidebar
           active={activeMenuItem}
           onClick={(item) => setActiveMenuItem(item)}
@@ -755,18 +593,16 @@ export default function BookingDetailsPage() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col items-center">
           <div className="max-w-6xl w-full px-6 py-10">
-            
+
             {/* Message Display */}
             {message.text && (
               <div className={`mb-4 p-4 rounded-md ${
-                message.type === 'success' 
-                  ? 'bg-green-100 text-green-800 border border-green-200' 
-                  : message.type === 'warning'
-                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                message.type === 'success'
+                  ? 'bg-green-100 text-green-800 border border-green-200'
                   : 'bg-red-100 text-red-800 border border-red-200'
               }`}>
                 {message.text}
-                <button 
+                <button
                   onClick={() => setMessage({ type: "", text: "" })}
                   className="float-right text-lg font-bold hover:text-gray-600"
                 >
@@ -775,33 +611,6 @@ export default function BookingDetailsPage() {
               </div>
             )}
 
-            {/* Debug Panel - Only show in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mb-4 p-4 bg-gray-100 border border-gray-300 rounded-md">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Information</h3>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Base URI:</strong> {BASE_URI}</p>
-                  <p><strong>PNR:</strong> {bookingContext?.bookingId || 'Not found'}</p>
-                  <p><strong>Data Loading:</strong> {dataLoading ? 'Yes' : 'No'}</p>
-                  <p><strong>Passenger Count:</strong> {passengerData.length}</p>
-                  <p><strong>PDF Available:</strong> {pdfData ? 'Yes' : 'No'}</p>
-                  <p><strong>Booking Data:</strong> {bookingData ? 'Yes' : 'No'}</p>
-                  {lastAttemptedEndpoints.length > 0 && (
-                    <div className="mt-2">
-                      <p className="font-semibold">Attempted Endpoints:</p>
-                      <ul className="list-disc ml-5">
-                        {lastAttemptedEndpoints.map((e, i) => (
-                          <li key={i} className="break-all">{e}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {lastApiError && (
-                    <p><strong>Last API Error:</strong> {String(lastApiError)}</p>
-                  )}
-                </div>
-              </div>
-            )}
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm">
               <CardContent className="px-6 py-6">
                 <h1 className="text-[28px] font-bold text-[#FF6B35] mb-6 tracking-wide uppercase text-left">
@@ -814,7 +623,7 @@ export default function BookingDetailsPage() {
                     type="text"
                     value={pnrInput}
                     onChange={(e) => setPnrInput(e.target.value)}
-                    placeholder="Enter PNR (e.g. ABC123)"
+                    placeholder="Enter PNR (e.g. D720HM)"
                     className="px-3 py-2 border rounded-md w-64"
                   />
                   <Button
@@ -834,7 +643,7 @@ export default function BookingDetailsPage() {
 
                 {/* Personal Info Section */}
                 <div className="mb-8">
-                <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
+                  <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
                     <span className="relative inline-block">
                       Personal Info
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
@@ -863,16 +672,10 @@ export default function BookingDetailsPage() {
                           </tr>
                         ) : bookingData ? (
                           <tr className="bg-white border-b border-gray-100 hover:bg-gray-50 transition">
-                            <td className="py-2 px-3">{bookingData.bookingReference || itineraryData?.pnr || "N/A"}</td>
-                            <td className="py-2 px-3">{formatDate(bookingData.issueDate || itineraryData?.issueDate)}</td>
-                            <td className="py-2 px-3">
-                              {bookingData.flightNumber || itineraryData?.flightNumber || "N/A"}
-                              {bookingData.aircraft && ` (Aircraft: ${bookingData.aircraft})`}
-                            </td>
-                            <td className="py-2 px-3">
-                              {bookingData.tripType || itineraryData?.tripType || "N/A"}
-                              {bookingData.refundable && " (Refundable)"}
-                            </td>
+                            <td className="py-2 px-3">{bookingData.bookingReference}</td>
+                            <td className="py-2 px-3">{formatDate(bookingData.issueDate)}</td>
+                            <td className="py-2 px-3">{bookingData.flightNumber}</td>
+                            <td className="py-2 px-3">{bookingData.tripType}</td>
                           </tr>
                         ) : (
                           <tr className="bg-white border-b border-gray-100">
@@ -888,14 +691,13 @@ export default function BookingDetailsPage() {
 
                 {/* Trip Details Section */}
                 <div>
-                <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
+                  <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
                     <span className="relative inline-block">
                       Trip Details
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
                     </span>
                   </h2>
 
-                  
                   <div className="overflow-x-auto bg-white">
                     <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] text-[13px]">
                       <thead className="bg-[#153E7E] text-white text-[13px] font-medium uppercase">
@@ -931,57 +733,32 @@ export default function BookingDetailsPage() {
                               }`}
                             >
                               <td className="py-2 px-3">{index + 1}</td>
-                              <td className="py-2 px-3">
-                                {passenger.firstName && passenger.lastName 
-                                  ? `${passenger.firstName} ${passenger.lastName}`
-                                  : passenger.fullName || passenger.name || "N/A"
-                                }
-                              </td>
-                              <td className="py-2 px-3">{passenger.airlineBookingRef || passenger.bookingReference || "N/A"}</td>
-                              <td className="py-2 px-3">{passenger.origin || passenger.departureCity || "N/A"}</td>
-                              <td className="py-2 px-3">{formatTime(passenger.departureTime || passenger.deptTime)}</td>
-                              <td className="py-2 px-3">{passenger.destination || passenger.arrivalCity || "N/A"}</td>
+                              <td className="py-2 px-3">{passenger.fullName}</td>
+                              <td className="py-2 px-3">{passenger.airlineBookingRef}</td>
+                              <td className="py-2 px-3">{passenger.origin}</td>
+                              <td className="py-2 px-3">{formatTime(passenger.departureTime)}</td>
+                              <td className="py-2 px-3">{passenger.destination}</td>
                               <td className="py-2 px-3">{formatTime(passenger.arrivalTime)}</td>
-                              <td className="py-2 px-3">{passenger.baggage || passenger.baggageAllowance || "N/A"}</td>
-                              <td className="py-2 px-3">{passenger.class || passenger.cabinClass || "N/A"}</td>
+                              <td className="py-2 px-3">{passenger.baggage}</td>
+                              <td className="py-2 px-3">{passenger.class}</td>
                               <td className="py-2 px-3">
                                 <div className="relative">
-                                  <Button 
+                                  <Button
                                     onClick={() => setShowEditDropdown(showEditDropdown === passenger.id ? false : passenger.id)}
                                     className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-4 py-2 text-sm font-medium flex items-center gap-2"
                                   >
                                     Edit Info
                                     <ChevronDown className="w-4 h-4" />
                                   </Button>
-                                  
+
                                   {showEditDropdown === passenger.id && (
-                                    <div
-                                      className="fixed w-64 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999] transform transition-all duration-200 ease-out animate-in fade-in slide-in-from-top-2"
-                                      style={{
-                                        position: 'fixed',
-                                        top: '50%',
-                                        left: '50%',
-                                        transform: 'translate(-50%, -50%)',
-                                        marginTop: '10px'
-                                      }}
-                                      ref={(el) => {
-                                        if (el && showEditDropdown === passenger.id) {
-                                          const button = el.previousElementSibling;
-                                          if (button) {
-                                            const rect = button.getBoundingClientRect();
-                                            el.style.left = `${rect.left + rect.width / 2}px`;
-                                            el.style.top = `${rect.bottom + 10}px`;
-                                            el.style.transform = 'translateX(-50%)';
-                                          }
-                                        }
-                                      }}
-                                    >
+                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999]">
                                       <div className="py-1">
                                         <button
                                           onClick={() => handleEditInfo("Email", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                          <div className="p-2 rounded-full bg-gray-100">
                                             <Mail className="w-4 h-4 text-gray-600" />
                                           </div>
                                           <div>
@@ -991,9 +768,9 @@ export default function BookingDetailsPage() {
                                         </button>
                                         <button
                                           onClick={() => handleEditInfo("Phone Number", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                          <div className="p-2 rounded-full bg-gray-100">
                                             <Phone className="w-4 h-4 text-gray-600" />
                                           </div>
                                           <div>
@@ -1003,9 +780,9 @@ export default function BookingDetailsPage() {
                                         </button>
                                         <button
                                           onClick={() => handleEditInfo("Travel Document", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group border-b border-gray-100"
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                          <div className="p-2 rounded-full bg-gray-100">
                                             <FileText className="w-4 h-4 text-gray-600" />
                                           </div>
                                           <div>
@@ -1015,9 +792,9 @@ export default function BookingDetailsPage() {
                                         </button>
                                         <button
                                           onClick={() => handleEditInfo("Address", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 group"
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors duration-200">
+                                          <div className="p-2 rounded-full bg-gray-100">
                                             <MapPin className="w-4 h-4 text-gray-600" />
                                           </div>
                                           <div>
@@ -1042,8 +819,9 @@ export default function BookingDetailsPage() {
                       </tbody>
                     </table>
                   </div>
+
                   <div className="mt-6 flex gap-4 justify-center flex-wrap">
-                    <Button 
+                    <Button
                       onClick={handleResendTicket}
                       disabled={loading}
                       className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2"
@@ -1051,12 +829,12 @@ export default function BookingDetailsPage() {
                       <Send className="w-4 h-4" />
                       {loading ? "Sending..." : "Resend Ticket Email"}
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleViewTicket}
                       disabled={loading || !pdfData}
                       className={`px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2 ${
-                        pdfData 
-                          ? "bg-[#153E7E] hover:bg-[#0F2F5A] text-white" 
+                        pdfData
+                          ? "bg-[#153E7E] hover:bg-[#0F2F5A] text-white"
                           : "bg-gray-400 text-gray-200 cursor-not-allowed"
                       }`}
                     >
@@ -1070,6 +848,7 @@ export default function BookingDetailsPage() {
                 </div>
               </CardContent>
             </Card>
+
             {/* Price Summary Card */}
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm mt-6">
               <CardContent className="px-6 py-6">
@@ -1078,12 +857,9 @@ export default function BookingDetailsPage() {
                   <div className="text-sm text-gray-600">Loading price details...</div>
                 ) : priceStructure ? (
                   <div className="text-sm text-[#2E4A6B]">
-                    <p><strong>Total:</strong> {priceStructure.currency ? `${priceStructure.currency} ` : ''}{priceStructure.totalPriceFC ?? priceStructure.totalPrice ?? 'N/A'}</p>
-                    {priceStructure.priceBreakDown && (
-                      <div className="mt-2 text-xs text-gray-700">
-                        <pre className="whitespace-pre-wrap">{JSON.stringify(priceStructure.priceBreakDown, null, 2)}</pre>
-                      </div>
-                    )}
+                    <p><strong>Total:</strong> {priceStructure.CurrencyCode?.value} {priceStructure.TotalPrice}</p>
+                    <p><strong>Base:</strong> {priceStructure.CurrencyCode?.value} {priceStructure.Base}</p>
+                    <p><strong>Taxes:</strong> {priceStructure.CurrencyCode?.value} {priceStructure.TotalTaxes}</p>
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500">No price information available for this booking.</div>
@@ -1096,8 +872,8 @@ export default function BookingDetailsPage() {
 
       {/* Edit Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto transform transition-all duration-300 ease-out animate-in zoom-in-95 slide-in-from-bottom-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-6 py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
@@ -1121,7 +897,7 @@ export default function BookingDetailsPage() {
                 </button>
               </div>
             </div>
-            
+
             {currentPassenger && (
               <div className="mb-4 p-3 bg-gray-50 rounded-md">
                 <p className="text-sm text-gray-600">
@@ -1129,7 +905,7 @@ export default function BookingDetailsPage() {
                 </p>
               </div>
             )}
-            
+
             {editType === "Email" && (
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-orange-500">

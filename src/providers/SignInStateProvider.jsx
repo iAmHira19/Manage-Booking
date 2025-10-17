@@ -90,7 +90,7 @@ export const SignInContextProvider = ({ children }) => {
     return () => {
       mounted = false;
     };
-  }, [searchCurrencyCode]);
+  }, [searchCurrencyCode, getCurrencyApi]);
 
   const signInFn = () => {
     if (typeof window !== "undefined") {
