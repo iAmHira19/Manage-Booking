@@ -299,49 +299,48 @@ export default function ManageBooking() {
                                   <div className="bg-[#f8f9fa] p-6 border-t-2 border-[#002b5c]">
                                     {/* Selected Plan Subtable */}
                                     <div className="mb-4">
-                                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-4 text-center">
+                                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-4 text-center">
                                         Selected Plan
                                       </h3>
                                     </div>
 
                                     <div className="overflow-x-auto bg-white rounded-lg shadow">
-                                      <table className="w-full border border-gray-200 text-[#2E4A6B]">
-                                        <thead className="bg-[#002b5c] text-white text-sm sm:text-[14px] font-medium uppercase">
+                                      <table className="w-full border border-gray-200 text-[#2E4A6B] min-w-[800px]">
+                                        <thead className="bg-[#002b5c] text-white text-xs sm:text-sm md:text-[14px] font-medium uppercase">
                                           <tr>
-                                            <th className="text-left py-2 px-2 sm:py-3 sm:px-4 border-b border-gray-200">
-                                              Sr No.
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              #
                                             </th>
-                                            <th className="text-left py-2 px-2 sm:py-3 sm:px-4 border-b border-gray-200">
-                                              Passenger Name
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              Passenger
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
-                                              Airline Booking
-                                              Reference
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              Booking Ref
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
-                                              Flying From
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              From
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
-                                              Dept. Time
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              Dept
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
-                                              Flying To
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              To
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
-                                              Arrival Time
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                              Arrival
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
                                               Baggage
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
                                               Class
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
                                               Actions
                                             </th>
                                           </tr>
                                         </thead>
-                                        <tbody className="text-[14px] font-normal">
+                                        <tbody className="text-xs sm:text-sm md:text-[14px] font-normal">
                                           {sampleTripData.map(
                                             (
                                               trip,
@@ -357,46 +356,46 @@ export default function ManageBooking() {
                                                     : "bg-[#F9FBFF]"
                                                 }`}
                                               >
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {trip.srNo}
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.passengerName
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.airlineBookingRef
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.flyingFrom
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.deptTime
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.flyingTo
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {
                                                     trip.arrivalTime
                                                   }
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {trip.baggage}
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   {trip.class}
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
                                                   <Button
                                                     size="sm"
                                                     onClick={() =>
@@ -404,7 +403,7 @@ export default function ManageBooking() {
                                                         trip,
                                                       )
                                                     }
-                                                    className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-3 py-1.5"
+                                                    className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm"
                                                   >
                                                     Edit Info
                                                   </Button>
@@ -422,30 +421,30 @@ export default function ManageBooking() {
                                         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
                                           <Button
                                             onClick={() => handleResendTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
                                           >
-                                            <Mail className="w-4 h-4" />
-                                            <span className="text-sm">Resend Ticket Email</span>
+                                            <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                                            <span className="text-xs sm:text-sm">Resend Ticket Email</span>
                                           </Button>
 
                                           <Button
                                             onClick={() => handleViewTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
                                           >
-                                            <Eye className="w-4 h-4" />
-                                            <span className="text-sm">View Ticket</span>
+                                            <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                                            <span className="text-xs sm:text-sm">View Ticket</span>
                                           </Button>
 
                                           <Button
                                             onClick={() => handlePrintTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
                                           >
-                                            <Printer className="w-4 h-4" />
-                                            <span className="text-sm">Print</span>
+                                            <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
+                                            <span className="text-xs sm:text-sm">Print</span>
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div className="text-center text-sm text-gray-600 w-full sm:w-auto">
+                                        <div className="text-center text-xs sm:text-sm text-gray-600 w-full sm:w-auto">
                                           No Ticket Available
                                         </div>
                                       )}
@@ -465,33 +464,33 @@ export default function ManageBooking() {
             </Card>
 
             {/* Actions for selected booking: centered row with three buttons */}
-            <div className="mt-6 flex justify-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md px-4">
+            <div className="mt-4 sm:mt-6 flex justify-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 w-full max-w-md px-2 sm:px-4">
                 <Button
                   onClick={() => handleResendTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
                 >
-                  <Mail className="w-4 h-4" />
-                  <span className="text-sm">Resend Ticket Email</span>
+                  <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm">Resend Ticket Email</span>
                 </Button>
 
                 <Button
                   onClick={() => handleViewTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
                 >
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm">View Ticket</span>
+                  <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm">View Ticket</span>
                 </Button>
 
                 <Button
                   onClick={() => handlePrintTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span className="text-sm">Print</span>
+                  <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm">Print</span>
                 </Button>
               </div>
             </div>
@@ -518,10 +517,10 @@ export default function ManageBooking() {
           <div className="bg-gradient-to-r from-[#002b5c] to-[#003d7a] px-8 py-6 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-[24px] font-bold text-white mb-1">
+                <DialogTitle className="text-lg sm:text-xl lg:text-[24px] font-bold text-white mb-1">
                   Edit Passenger Information
                 </DialogTitle>
-                <p className="text-blue-200 text-[14px]">
+                <p className="text-blue-200 text-xs sm:text-sm lg:text-[14px]">
                   {editingPassenger?.passengerName}
                 </p>
               </div>
@@ -576,8 +575,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <Mail className="w-5 h-5 text-[#FF6B35]" />
+                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
                         Email Information
                       </h3>
 
@@ -639,8 +638,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <Phone className="w-5 h-5 text-[#FF6B35]" />
+                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
                         Phone Number Information
                       </h3>
 
@@ -702,8 +701,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-[#FF6B35]" />
+                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
                         Travel Document Information
                       </h3>
 
@@ -869,8 +868,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-[#FF6B35]" />
+                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
                         Address Information
                       </h3>
 
@@ -1010,17 +1009,17 @@ export default function ManageBooking() {
           )}
 
           {/* Modern Footer with Action Buttons */}
-          <div className="border-t border-gray-200 bg-white px-8 py-5 flex justify-end gap-4 flex-shrink-0">
+          <div className="border-t border-gray-200 bg-white px-4 sm:px-8 py-3 sm:py-5 flex justify-end gap-3 sm:gap-4 flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => setIsEditModalOpen(false)}
-              className="px-8 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-12"
+              className="px-4 sm:px-8 py-2 sm:py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-10 sm:h-12 text-sm sm:text-base"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveEdit}
-              className="px-8 py-3 bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12"
+              className="px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-10 sm:h-12 text-sm sm:text-base"
             >
               Save Changes
             </Button>

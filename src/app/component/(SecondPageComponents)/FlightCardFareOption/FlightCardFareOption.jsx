@@ -202,6 +202,7 @@ function FlightCardFareOption(props) {
         let newprevData = {
           ...prevData,
           tokenId: props.TokenId,
+          TripType: "Round Trip",
           flightCriteria: props.dataItem.flightSegment.map((fCriteria) => {
             let newFC = {
               ...fCriteria,
@@ -245,6 +246,7 @@ function FlightCardFareOption(props) {
       props.setFlightsReview((prevData) => {
         let newprevData = {
           ...prevData,
+          TripType: "Round Trip",
           flightCriteria: [
             ...prevData.flightCriteria,
             ...props.dataItem.flightSegment.map((fSegment) => {
@@ -297,6 +299,7 @@ function FlightCardFareOption(props) {
         let newprevData = {
           ...prevData,
           tokenId: props.TokenId,
+          TripType: "One Way",
           flightCriteria: props.dataItem.flightSegment.map((fCriteria) => {
             let newFC = {
               ...fCriteria,
@@ -346,6 +349,7 @@ function FlightCardFareOption(props) {
       const updatedData = {
         ...prevData,
         tokenId: props.TokenId,
+        TripType: "Multi City",
         flightCriteria:
           props.legsCount === 1
             ? newCriteria
@@ -396,7 +400,10 @@ function FlightCardFareOption(props) {
       }
 
       props.setButtonLoading(true);
-      let flightsReviewDataString = JSON.stringify(props.flightsReview);
+      let flightsReviewDataString = JSON.stringify({
+        ...props.flightsReview,
+        TripType: String(props.flightsReview.TripType || "One Way"),
+      });
       isClientLoaded &&
         sessionStorage.setItem(
           "flightReviewPageData",
@@ -435,7 +442,10 @@ function FlightCardFareOption(props) {
 
       props.setButtonLoading(true);
       // props.setDisableButton(true);
-      let flightsReviewDataString = JSON.stringify(props.flightsReview);
+      let flightsReviewDataString = JSON.stringify({
+        ...props.flightsReview,
+        TripType: String(props.flightsReview.TripType || "Round Trip"),
+      });
       isClientLoaded &&
         sessionStorage.setItem(
           "flightReviewPageData",
@@ -456,7 +466,10 @@ function FlightCardFareOption(props) {
         (fC) => fC.legRef === props.MCDataLength.toString()
       );
       if (isAllLegsPresent.length > 0) {
-        const flightsReviewDataString = JSON.stringify(props.flightsReview);
+        const flightsReviewDataString = JSON.stringify({
+          ...props.flightsReview,
+          TripType: String(props.flightsReview.TripType || "Multi City"),
+        });
         props.setButtonLoading(true);
         if (isClientLoaded) {
           const tabId = sessionStorage.getItem("tabId");

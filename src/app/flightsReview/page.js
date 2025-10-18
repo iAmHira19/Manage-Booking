@@ -47,7 +47,7 @@ const { Step } = Steps;
 
 const Page = () => {
   // let flightsReviewDataJSON = [];
-    //const UI_URI = process.env.NEXT_PUBLIC_UI_URI;
+  //const UI_URI = process.env.NEXT_PUBLIC_UI_URI;
   const [flightsReviewDataJSON, setFlightsReviewDataJSON] = useState([]);
   const [flightsReviewJsonFinal, setFlightsReviewJsonFinal] = useState([]);
   const [generatePDFBase64, setGeneratedPDFBase64] = useState(null);
@@ -55,12 +55,14 @@ const Page = () => {
     useGetReservation();
   const searchParams = useSearchParams();
   const [cities, setCities] = useState(null);
-  const { userId, searchCurrencyCode, exchangeRate, searchCurrencySymbol } = useSignInContext();
+  const { userId, searchCurrencyCode, exchangeRate, searchCurrencySymbol } =
+    useSignInContext();
   const [reactToPrintFn, setReactToPrintFn] = useState(null);
   const [airports, setAirports] = useState([]);
   const { data: AirportData } = useAirports("none");
   const [currency, setCurrency] = useState("PKR");
-  const currencyDisplay = searchCurrencySymbol || searchCurrencyCode || currency;
+  const currencyDisplay =
+    searchCurrencySymbol || searchCurrencyCode || currency;
   const [priceStructure, setPriceStructure] = useState({});
   const [flightReviewData, setFlightReviewData] = useState(null);
   const [travelersData, setTravelersData] = useState({});
@@ -331,7 +333,7 @@ const Page = () => {
         email: firstTravelerData.email ?? "",
       };
       const isEmpty = (value) => !value || value.trim() === "";
-      
+
       for (let index = 0; index < travelersArray.length; index++) {
         const travelerData = travelersData[index] || {};
         const requiredFields = [
@@ -372,8 +374,14 @@ const Page = () => {
         return;
       }
       // Normalize phone: avoid double country code and strip non-digits
-      const rawNumber = String(contactDetails.phoneNumber || "").replace(/\D/g, "");
-      const cc = String(contactDetails.countryAccessCode || "").replace(/\D/g, "");
+      const rawNumber = String(contactDetails.phoneNumber || "").replace(
+        /\D/g,
+        ""
+      );
+      const cc = String(contactDetails.countryAccessCode || "").replace(
+        /\D/g,
+        ""
+      );
       const trimmedNumber = rawNumber.startsWith(cc)
         ? rawNumber.slice(cc.length)
         : rawNumber.replace(/^0+/, "");
@@ -532,17 +540,19 @@ const Page = () => {
     setFlightsReviewJsonFinal((prev) => {
       const totalPriceFC = Number(priceStructure?.totalPriceFC ?? 0);
       const computedAmount = Math.ceil(totalPriceFC);
-      const amountCurrency = currencyDisplay || priceStructure?.currency || "PKR";
+      const amountCurrency =
+        currencyDisplay || priceStructure?.currency || "PKR";
       newData = {
         ...prev,
+        TripType: String(prev.TripType || "One Way"),
         billingInfo,
         UserID: userId,
-        ReturnURL: `${window?.location?.origin || ''}/flightsReview`,
+        ReturnURL: `${window?.location?.origin || ""}/flightsReview`,
         Payment: {
           amount: computedAmount,
           currency: amountCurrency,
           // optional metadata often used by gateways
-          orderHint: `${Date.now()}-${userId || 'guest'}`,
+          orderHint: `${Date.now()}-${userId || "guest"}`,
           orderId: `${Date.now()}`,
           description: "Flight reservation payment",
         },
@@ -659,6 +669,13 @@ const Page = () => {
     let flightsReviewDataJSON = flightsReviewDataForParsing
       ? JSON.parse(flightsReviewDataForParsing)
       : [];
+
+    const TripType = String(flightsReviewDataJSON.TripType || "One Way");
+    setFlightsReviewDataJSON(flightsReviewDataJSON);
+    setFlightsReviewJsonFinal({
+      ...flightsReviewDataJSON,
+      TripType, // Set as plain string
+    });
 
     let currentStage = sessionStorage.getItem("currentStage");
     let flightsReviewDataJsonSession = JSON.parse(
@@ -1283,8 +1300,8 @@ const Page = () => {
                   className={`font-gotham text-light text-sm flex items-center gap-x-2 ${
                     currentStep === 0 ? "text-blue-500" : "text-slate-500"
                   }`}
-                  onClick={()=>{
-                    console.log(priceStructure)
+                  onClick={() => {
+                    console.log(priceStructure);
                   }}
                 >
                   <RiFlightTakeoffFill className="text-base" /> Flights
@@ -1421,8 +1438,14 @@ const Page = () => {
             flightCriteria={flightsReviewJsonFinal?.flightCriteria}
           ></ContactForm>
         </div>
-        
-  <div className={`p-4 transition-all duration-300 ease-in-out ${currentStep === 2 ? 'opacity-100 translate-y-0 block' : 'opacity-0 -translate-y-3 pointer-events-none h-0 overflow-hidden'}`}>
+
+        <div
+          className={`p-4 transition-all duration-300 ease-in-out ${
+            currentStep === 2
+              ? "opacity-100 translate-y-0 block"
+              : "opacity-0 -translate-y-3 pointer-events-none h-0 overflow-hidden"
+          }`}
+        >
           <CreditCardForm
             isPaymentInitiated={isPaymentInitiated}
             flightsReviewJsonFinal={flightsReviewJsonFinal}
@@ -1541,7 +1564,9 @@ const Page = () => {
                 flightReviewData?.OfferListResponse?.Result?.Error?.[0]?.Message
                   ? "!hidden"
                   : "!inline-flex"
-              } ${currentStep === 2?"!hidden":"!inline-flex"} !items-center !justify-center !py-2 md:!py-5 !text-xs md:!text-sm !align-middle !rounded !bg-orange-500 !text-white !font-bold !cursor-pointer hover:!border-2 !font-gotham`}
+              } ${
+                currentStep === 2 ? "!hidden" : "!inline-flex"
+              } !items-center !justify-center !py-2 md:!py-5 !text-xs md:!text-sm !align-middle !rounded !bg-orange-500 !text-white !font-bold !cursor-pointer hover:!border-2 !font-gotham`}
               disabled={
                 flightReviewData?.OfferListResponse?.Result?.Error &&
                 flightReviewData?.OfferListResponse?.Result?.Error[0]?.Message
