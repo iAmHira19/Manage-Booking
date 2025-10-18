@@ -4,6 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import TermsSidebar from "@/components/TermsSidebar";
 import { Upload, ChevronDown, Mail, Phone, FileText, MapPin, Eye, Send, CheckCircle, AlertCircle, X } from "lucide-react";
 
@@ -15,7 +20,7 @@ export default function BookingDetailsPage() {
 
   // State for enhanced functionality
   const [bookingContext, setBookingContext] = useState(null);
-  const [showEditDropdown, setShowEditDropdown] = useState(false);
+  const [showEditDropdown, setShowEditDropdown] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editType, setEditType] = useState("");
   const [editData, setEditData] = useState({});
@@ -23,6 +28,9 @@ export default function BookingDetailsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [formErrors, setFormErrors] = useState({});
   const [currentPassenger, setCurrentPassenger] = useState(null);
+  // Modal and editing state that mirror /manage-booking/page.js behavior
+  const [isEditModalOpenBD, setIsEditModalOpenBD] = useState(false);
+  const [editingPassengerBD, setEditingPassengerBD] = useState(null);
 
   // API data states
   const [itineraryData, setItineraryData] = useState(null);
@@ -35,6 +43,51 @@ export default function BookingDetailsPage() {
 
   // Base URI for API calls
   const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
+
+  // Dummy booking data for testing
+  const DUMMY_BOOKING_DATA = {
+    bookingReference: "D720HM",
+    issueDate: "2024-01-15",
+    flightNumber: "PK301",
+    tripType: "One Way",
+    refundable: false,
+    totalPrice: "450.00",
+    currency: "USD",
+    adultPrice: "400.00",
+    adultTax: "50.00",
+  };
+
+  const DUMMY_PASSENGER_DATA = [
+    {
+      id: "passenger_1",
+      firstName: "John",
+      lastName: "Smith",
+      fullName: "John Smith",
+      email: "john.smith@email.com",
+      phone: "+1234567890",
+      airlineBookingRef: "D720HM",
+      origin: "JFK",
+      destination: "LHR",
+      departureTime: "2024-01-20T14:30:00",
+      arrivalTime: "2024-01-20T22:45:00",
+      baggage: "Standard",
+      class: "Economy",
+      documentType: "passport",
+      documentNumber: "P123456789",
+      documentExpiry: "2028-12-31",
+      address: {}
+    }
+  ];
+
+  const DUMMY_PRICE_STRUCTURE = {
+    TotalPrice: "450.00",
+    Base: "400.00",
+    TotalTaxes: "50.00",
+    CurrencyCode: { value: "USD" },
+    noOfAdults: 1,
+    noOfChild: 0,
+    noOfInfant: 0
+  };
 
   // Load booking context from session storage
   useEffect(() => {
@@ -69,6 +122,53 @@ export default function BookingDetailsPage() {
     loadBookingData();
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showEditDropdown && !event.target.closest('.edit-dropdown-container')) {
+        setShowEditDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEditDropdown]);
+
+  // Open the full Edit Info modal (same behavior as /manage-booking/page.js)
+  const handleOpenEditModal = (passenger) => {
+    // Normalize passenger data into the editingPassenger shape used by manage-booking
+    const names = (passenger?.fullName || passenger?.firstName + ' ' + passenger?.lastName || '').split(' ');
+    const firstName = passenger?.firstName || names[0] || '';
+    const lastName = passenger?.lastName || (names.length > 1 ? names.slice(-1)[0] : '');
+
+    setEditingPassengerBD({
+      ...passenger,
+      email: passenger?.email || '',
+      phone: passenger?.phone || '',
+      street: passenger?.address?.street || '',
+      city: passenger?.address?.city || '',
+      state: passenger?.address?.state || '',
+      postalCode: passenger?.address?.postalCode || '',
+      country: passenger?.address?.country || '',
+      firstName: firstName,
+      lastName: lastName,
+      passportNumber: passenger?.documentNumber || passenger?.passportNumber || '',
+      passportExpiry: passenger?.documentExpiry || passenger?.passportExpiry || '',
+      dateOfBirth: passenger?.dateOfBirth || '',
+      nationality: passenger?.nationality || '',
+    });
+
+    setIsEditModalOpenBD(true);
+  };
+
+  const handleSaveEditBD = () => {
+    // For parity with /manage-booking/page.js, simply close modal and clear editing passenger
+    // (manage-booking's save didn't persist changed values in the sample implementation)
+    setIsEditModalOpenBD(false);
+    setEditingPassengerBD(null);
+  };
   // Fetch itinerary data from API using the specific endpoint
   const fetchItineraryData = async (pnr) => {
     setDataLoading(true);
@@ -335,35 +435,23 @@ export default function BookingDetailsPage() {
   };
 
   // Handle edit info dropdown
-  const handleEditInfo = (type, passenger = null) => {
-    setEditType(type);
-    setCurrentPassenger(passenger);
-    setFormErrors({});
-
-    const existingData = {};
-    if (passenger) {
-      switch (type) {
-        case "Email":
-          existingData.newEmail = "";
-          break;
-        case "Phone Number":
-          existingData.newPhone = "";
-          break;
-        case "Travel Document":
-          existingData.newDocumentNumber = "";
-          existingData.newExpiryDate = "";
-          break;
-        case "Address":
-          existingData.firstName = passenger.firstName || "";
-          existingData.lastName = passenger.lastName || "";
-          existingData.newPhone = "";
-          existingData.newPassportNumber = "";
-          existingData.newPassportExpiry = "";
-          break;
-      }
-    }
-
-    setEditData(existingData);
+  const handleEditInfo = (passenger = null) => {
+    setCurrentPassenger({
+      ...passenger,
+      email: passenger?.email || "passenger@email.com",
+      phone: passenger?.phone || "+92 300 1234567",
+      street: "123 Main Street",
+      city: "Lahore",
+      state: "Punjab",
+      postalCode: "54000",
+      country: "Pakistan",
+      firstName: passenger?.firstName || "John",
+      lastName: passenger?.lastName || "Smith",
+      passportNumber: passenger?.documentNumber || "P123456789",
+      passportExpiry: passenger?.documentExpiry || "2028-12-31",
+      dateOfBirth: "1990-01-01",
+      nationality: "Pakistani",
+    });
     setEditModalOpen(true);
     setShowEditDropdown(false);
   };
@@ -574,7 +662,7 @@ export default function BookingDetailsPage() {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex w-full justify-between bg-[#f8f9fa] relative min-h-screen gap-x-8">
+  <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] w-full bg-[#f8f9fa] relative min-h-screen gap-x-8">
 
         {/* Sidebar */}
         <TermsSidebar
@@ -590,8 +678,33 @@ export default function BookingDetailsPage() {
           className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col py-4"
         />
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col items-center">
+  {/* Mobile/Tablet compact tab navigation - visible only on small screens */}
+  <div className="lg:hidden w-full px-4 py-3 bg-white">
+          <div className="flex gap-2 overflow-x-auto">
+            {[
+              'Change your Plan',
+              'Split Itinerary',
+              'Add Passengers',
+              'Special Note',
+              'Customer Support',
+            ].map((item) => (
+              <button
+                key={item}
+                onClick={() => setActiveMenuItem(item)}
+                className={`whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  activeMenuItem === item
+                    ? 'bg-[#FF6B35] text-white'
+                    : 'bg-white text-[#153E7E] border border-gray-200'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
+  {/* Main Content */}
+  <div className="flex-1 flex flex-col items-center mt-4 lg:mt-0">
           <div className="max-w-6xl w-full px-6 py-10">
 
             {/* Message Display */}
@@ -613,37 +726,55 @@ export default function BookingDetailsPage() {
 
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm">
               <CardContent className="px-6 py-6">
-                <h1 className="text-[28px] font-bold text-[#FF6B35] mb-6 tracking-wide uppercase text-left">
+                <h1 className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#FF6B35] mb-4 sm:mb-6 tracking-wide uppercase text-left">
                   {activeMenuItem}
                 </h1>
 
-                {/* PNR Input */}
-                <div className="mb-6 flex items-center gap-3">
+                {/* PNR Input and Demo Data */}
+                <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                   <input
                     type="text"
                     value={pnrInput}
                     onChange={(e) => setPnrInput(e.target.value)}
                     placeholder="Enter PNR (e.g. D720HM)"
-                    className="px-3 py-2 border rounded-md w-64"
+                    className="px-3 py-2 border rounded-md w-full sm:w-48 md:w-64 text-sm sm:text-base"
                   />
-                  <Button
-                    onClick={async () => {
-                      if (!pnrInput || pnrInput.trim().length === 0) {
-                        setMessage({ type: 'error', text: 'Please enter a valid PNR' });
-                        return;
-                      }
-                      setMessage({ type: '', text: '' });
-                      await fetchItineraryData(pnrInput.trim());
-                    }}
-                    className="bg-[#153E7E] hover:bg-[#0F2F5A] text-white px-4 py-2"
-                  >
-                    Load Booking
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button
+                      onClick={async () => {
+                        if (!pnrInput || pnrInput.trim().length === 0) {
+                          setMessage({ type: 'error', text: 'Please enter a valid PNR' });
+                          return;
+                        }
+                        setMessage({ type: '', text: '' });
+                        await fetchItineraryData(pnrInput.trim());
+                      }}
+                      className="bg-[#153E7E] hover:bg-[#0F2F5A] text-white px-3 sm:px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      Load Booking
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setMessage({ type: '', text: '' });
+                        setPassengerData(DUMMY_PASSENGER_DATA);
+                        setBookingData(DUMMY_BOOKING_DATA);
+                        setPriceStructure(DUMMY_PRICE_STRUCTURE);
+                        setDataLoading(false);
+                        setMessage({
+                          type: "success",
+                          text: "Demo booking data loaded successfully! You can now test the layout and functionality."
+                        });
+                      }}
+                      className="bg-[#28a745] hover:bg-[#218838] text-white px-3 sm:px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      Load Demo Data
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Personal Info Section */}
                 <div className="mb-8">
-                  <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
+                  <h2 className="text-lg sm:text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
                     <span className="relative inline-block">
                       Personal Info
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
@@ -651,16 +782,16 @@ export default function BookingDetailsPage() {
                   </h2>
 
                   <div className="overflow-x-auto bg-white">
-                    <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] text-[13px]">
-                      <thead className="bg-[#153E7E] text-white text-[13px] font-medium uppercase">
+                    <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B]">
+                      <thead className="bg-[#153E7E] text-white text-sm sm:text-[13px] font-medium uppercase">
                         <tr>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Cherry Flight Booking #</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Date (Issue)</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Flight Number</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Trip Type</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Cherry Flight Booking #</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Date (Issue)</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Flight Number</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Trip Type</th>
                         </tr>
                       </thead>
-                      <tbody className="text-[13px] font-normal">
+                      <tbody className="text-sm sm:text-[13px] font-normal">
                         {dataLoading ? (
                           <tr className="bg-white border-b border-gray-100">
                             <td colSpan="4" className="py-4 px-3 text-center">
@@ -672,10 +803,10 @@ export default function BookingDetailsPage() {
                           </tr>
                         ) : bookingData ? (
                           <tr className="bg-white border-b border-gray-100 hover:bg-gray-50 transition">
-                            <td className="py-2 px-3">{bookingData.bookingReference}</td>
-                            <td className="py-2 px-3">{formatDate(bookingData.issueDate)}</td>
-                            <td className="py-2 px-3">{bookingData.flightNumber}</td>
-                            <td className="py-2 px-3">{bookingData.tripType}</td>
+                            <td className="py-2 px-2 sm:py-2 sm:px-3">{bookingData.bookingReference}</td>
+                            <td className="py-2 px-2 sm:py-2 sm:px-3">{formatDate(bookingData.issueDate)}</td>
+                            <td className="py-2 px-2 sm:py-2 sm:px-3">{bookingData.flightNumber}</td>
+                            <td className="py-2 px-2 sm:py-2 sm:px-3">{bookingData.tripType}</td>
                           </tr>
                         ) : (
                           <tr className="bg-white border-b border-gray-100">
@@ -691,7 +822,7 @@ export default function BookingDetailsPage() {
 
                 {/* Trip Details Section */}
                 <div>
-                  <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
+                  <h2 className="text-lg sm:text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
                     <span className="relative inline-block">
                       Trip Details
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
@@ -699,22 +830,22 @@ export default function BookingDetailsPage() {
                   </h2>
 
                   <div className="overflow-x-auto bg-white">
-                    <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] text-[13px]">
-                      <thead className="bg-[#153E7E] text-white text-[13px] font-medium uppercase">
+                    <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B]">
+                      <thead className="bg-[#153E7E] text-white text-sm sm:text-[13px] font-medium uppercase">
                         <tr>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Sr No.</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Passenger Name</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Airline Booking Reference</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Flying From</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Dept. Time</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Flying To</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Arrival Time</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Baggage</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Class</th>
-                          <th className="text-left py-2 px-3 border-b border-gray-200">Actions</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Sr No.</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Passenger Name</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Airline Booking Reference</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Flying From</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Dept. Time</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Flying To</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Arrival Time</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Baggage</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Class</th>
+                          <th className="text-left py-2 px-2 sm:py-2 sm:px-3 border-b border-gray-200">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="text-[13px] font-normal">
+                      <tbody className="text-sm sm:text-[13px] font-normal">
                         {dataLoading ? (
                           <tr className="bg-white border-b border-gray-100">
                             <td colSpan="10" className="py-4 px-3 text-center">
@@ -732,19 +863,24 @@ export default function BookingDetailsPage() {
                                 index % 2 === 0 ? "bg-white" : "bg-[#F9FBFF]"
                               }`}
                             >
-                              <td className="py-2 px-3">{index + 1}</td>
-                              <td className="py-2 px-3">{passenger.fullName}</td>
-                              <td className="py-2 px-3">{passenger.airlineBookingRef}</td>
-                              <td className="py-2 px-3">{passenger.origin}</td>
-                              <td className="py-2 px-3">{formatTime(passenger.departureTime)}</td>
-                              <td className="py-2 px-3">{passenger.destination}</td>
-                              <td className="py-2 px-3">{formatTime(passenger.arrivalTime)}</td>
-                              <td className="py-2 px-3">{passenger.baggage}</td>
-                              <td className="py-2 px-3">{passenger.class}</td>
-                              <td className="py-2 px-3">
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{index + 1}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.fullName}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.airlineBookingRef}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.origin}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{formatTime(passenger.departureTime)}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.destination}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{formatTime(passenger.arrivalTime)}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.baggage}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">{passenger.class}</td>
+                              <td className="py-2 px-2 sm:py-2 sm:px-3">
                                 <div className="relative">
                                   <Button
-                                    onClick={() => setShowEditDropdown(showEditDropdown === passenger.id ? false : passenger.id)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      // Open the main Edit Info modal (same as manage-booking)
+                                      handleOpenEditModal(passenger);
+                                    }}
                                     className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-4 py-2 text-sm font-medium flex items-center gap-2"
                                   >
                                     Edit Info
@@ -752,54 +888,23 @@ export default function BookingDetailsPage() {
                                   </Button>
 
                                   {showEditDropdown === passenger.id && (
-                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999]">
+                                    <div className="edit-dropdown-container absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999]">
                                       <div className="py-1">
                                         <button
-                                          onClick={() => handleEditInfo("Email", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowEditDropdown(false);
+                                            handleOpenEditModal(passenger);
+                                          }}
+                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 cursor-pointer"
                                         >
                                           <div className="p-2 rounded-full bg-gray-100">
                                             <Mail className="w-4 h-4 text-gray-600" />
                                           </div>
                                           <div>
-                                            <div className="font-medium text-gray-900">Edit Email</div>
-                                            <div className="text-xs text-gray-500">Update email address</div>
-                                          </div>
-                                        </button>
-                                        <button
-                                          onClick={() => handleEditInfo("Phone Number", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
-                                        >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <Phone className="w-4 h-4 text-gray-600" />
-                                          </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Phone Number</div>
-                                            <div className="text-xs text-gray-500">Update phone number</div>
-                                          </div>
-                                        </button>
-                                        <button
-                                          onClick={() => handleEditInfo("Travel Document", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
-                                        >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <FileText className="w-4 h-4 text-gray-600" />
-                                          </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Travel Document</div>
-                                            <div className="text-xs text-gray-500">Update passport/ID details</div>
-                                          </div>
-                                        </button>
-                                        <button
-                                          onClick={() => handleEditInfo("Address", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200"
-                                        >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <MapPin className="w-4 h-4 text-gray-600" />
-                                          </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Address</div>
-                                            <div className="text-xs text-gray-500">Update address information</div>
+                                            <div className="font-medium text-gray-900">Edit Info</div>
+                                            <div className="text-xs text-gray-500">Update passenger details</div>
                                           </div>
                                         </button>
                                       </div>
@@ -820,28 +925,28 @@ export default function BookingDetailsPage() {
                     </table>
                   </div>
 
-                  <div className="mt-6 flex gap-4 justify-center flex-wrap">
+                  <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                     <Button
                       onClick={handleResendTicket}
                       disabled={loading}
-                      className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2"
+                      className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-4 sm:px-8 py-2 sm:py-3 rounded-md font-medium text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-3 h-3 sm:w-4 sm:h-4" />
                       {loading ? "Sending..." : "Resend Ticket Email"}
                     </Button>
                     <Button
                       onClick={handleViewTicket}
                       disabled={loading || !pdfData}
-                      className={`px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2 ${
+                      className={`px-4 sm:px-8 py-2 sm:py-3 rounded-md font-medium text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto ${
                         pdfData
                           ? "bg-[#153E7E] hover:bg-[#0F2F5A] text-white"
                           : "bg-gray-400 text-gray-200 cursor-not-allowed"
                       }`}
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                       {loading ? "Loading..." : pdfData ? "View Generated Ticket" : "No Ticket Available"}
                     </Button>
-                    <Button className="bg-[#28a745] hover:bg-[#218838] text-white px-8 py-3 rounded-md font-medium text-sm">
+                    <Button className="bg-[#28a745] hover:bg-[#218838] text-white px-4 sm:px-8 py-2 sm:py-3 rounded-md font-medium text-xs sm:text-sm w-full sm:w-auto">
                       Print
                     </Button>
                   </div>
@@ -852,7 +957,7 @@ export default function BookingDetailsPage() {
             {/* Price Summary Card */}
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm mt-6">
               <CardContent className="px-6 py-6">
-                <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide mb-4">Price Summary</h2>
+                <h2 className="text-lg sm:text-[18px] font-semibold text-[#2E4A6B] tracking-wide mb-4">Price Summary</h2>
                 {dataLoading ? (
                   <div className="text-sm text-gray-600">Loading price details...</div>
                 ) : priceStructure ? (
@@ -870,373 +975,751 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-6 py-4 rounded-t-xl">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    editType === "Email" ? "bg-orange-500" :
-                    editType === "Phone Number" ? "bg-blue-500" :
-                    editType === "Travel Document" ? "bg-green-500" : "bg-purple-500"
-                  }`}>
-                    {editType === "Email" && <Mail className="w-5 h-5" />}
-                    {editType === "Phone Number" && <Phone className="w-5 h-5" />}
-                    {editType === "Travel Document" && <FileText className="w-5 h-5" />}
-                    {editType === "Address" && <MapPin className="w-5 h-5" />}
-                  </div>
-                  Edit {editType}
-                </h3>
+      {/* Beautiful Edit Info Modal */}
+      <Dialog
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      >
+  <DialogContent className="max-w-[640px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col mx-auto my-auto max-h-[72vh]">
+          {/* Modern Header */}
+          <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-8 py-6 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-[24px] font-bold text-white mb-1">
+                  Edit Passenger Information
+                </DialogTitle>
+                <p className="text-blue-200 text-[14px]">
+                  {currentPassenger?.firstName} {currentPassenger?.lastName}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="text-white hover:bg-white/10 transition-colors rounded-full p-2"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {currentPassenger && (
+            <div className="overflow-y-auto flex-1">
+              <div className="p-6 sm:p-8">
+                {/* Beautiful Tabs */}
+                <Tabs defaultValue="email" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-100 p-1 rounded-xl mb-6 sm:mb-8">
+                    <TabsTrigger
+                      value="email"
+                      className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="phone"
+                      className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2"
+                    >
+                      <Phone className="w-4 h-4" />
+                      Phone
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="document"
+                      className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Document
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="address"
+                      className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Address
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Email Tab */}
+                  <TabsContent
+                    value="email"
+                    className="space-y-6 mt-6"
+                  >
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                      <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-[#FF6B35]" />
+                        Email Information
+                      </h3>
+
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label className="text-[#153E7E] font-medium">
+                            Current Email Address
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              value={currentPassenger.email}
+                              disabled
+                              className="bg-blue-50/50 border-blue-200 text-gray-700 cursor-not-allowed rounded-lg h-12 pl-4"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                              Current
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="newEmail"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            New Email Address
+                          </Label>
+                          <Input
+                            id="newEmail"
+                            type="email"
+                            placeholder="Enter new email address"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="confirmEmail"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Confirm New Email Address
+                          </Label>
+                          <Input
+                            id="confirmEmail"
+                            type="email"
+                            placeholder="Re-enter new email address"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Phone Tab */}
+                  <TabsContent
+                    value="phone"
+                    className="space-y-6 mt-6"
+                  >
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                      <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                        <Phone className="w-5 h-5 text-[#FF6B35]" />
+                        Phone Number Information
+                      </h3>
+
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label className="text-[#153E7E] font-medium">
+                            Current Phone Number
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              value={currentPassenger.phone}
+                              disabled
+                              className="bg-blue-50/50 border-blue-200 text-gray-700 cursor-not-allowed rounded-lg h-12 pl-4"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                              Current
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="newPhone"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            New Phone Number
+                          </Label>
+                          <Input
+                            id="newPhone"
+                            type="tel"
+                            placeholder="Enter new phone number"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="confirmPhone"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Confirm New Phone Number
+                          </Label>
+                          <Input
+                            id="confirmPhone"
+                            type="tel"
+                            placeholder="Re-enter new phone number"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Travel Document Tab */}
+                  <TabsContent
+                    value="document"
+                    className="space-y-6 mt-6"
+                  >
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                      <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-[#FF6B35]" />
+                        Travel Document Information
+                      </h3>
+
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="firstName"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              First Name
+                            </Label>
+                            <Input
+                              id="firstName"
+                              defaultValue={
+                                currentPassenger.firstName
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="lastName"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Last Name
+                            </Label>
+                            <Input
+                              id="lastName"
+                              defaultValue={
+                                currentPassenger.lastName
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="middleName"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Middle Name{" "}
+                            <span className="text-gray-400">
+                              (Optional)
+                            </span>
+                          </Label>
+                          <Input
+                            id="middleName"
+                            placeholder="Enter middle name"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="dateOfBirth"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Date of Birth
+                            </Label>
+                            <Input
+                              id="dateOfBirth"
+                              type="date"
+                              defaultValue={
+                                currentPassenger.dateOfBirth
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="nationality"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Nationality
+                            </Label>
+                            <Input
+                              id="nationality"
+                              defaultValue={
+                                currentPassenger.nationality
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="passportNumber"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Passport Number
+                            </Label>
+                            <Input
+                              id="passportNumber"
+                              defaultValue={
+                                currentPassenger.passportNumber
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="passportExpiry"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Passport Expiry Date
+                            </Label>
+                            <Input
+                              id="passportExpiry"
+                              type="date"
+                              defaultValue={
+                                currentPassenger.passportExpiry
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="issuingCountry"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Passport Issuing Country
+                          </Label>
+                          <Select defaultValue="Pakistan">
+                            <SelectTrigger className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pakistan">
+                                Pakistan
+                              </SelectItem>
+                              <SelectItem value="India">
+                                India
+                              </SelectItem>
+                              <SelectItem value="UAE">
+                                United Arab Emirates
+                              </SelectItem>
+                              <SelectItem value="UK">
+                                United Kingdom
+                              </SelectItem>
+                              <SelectItem value="USA">
+                                United States
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Address Tab */}
+                  <TabsContent
+                    value="address"
+                    className="space-y-6 mt-6"
+                  >
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                      <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-[#FF6B35]" />
+                        Address Information
+                      </h3>
+
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="street"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Street Address
+                          </Label>
+                          <Input
+                            id="street"
+                            defaultValue={
+                              currentPassenger.street
+                            }
+                            placeholder="Enter street address"
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="apartment"
+                            className="text-[#153E7E] font-medium"
+                          >
+                            Apartment, Suite, etc.{" "}
+                            <span className="text-gray-400">
+                              (Optional)
+                            </span>
+                          </Label>
+                          <Input
+                            id="apartment"
+                            placeholder="Apt, Suite, Unit, Building, Floor, etc."
+                            className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="city"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              City
+                            </Label>
+                            <Input
+                              id="city"
+                              defaultValue={
+                                currentPassenger.city
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="state"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              State / Province
+                            </Label>
+                            <Input
+                              id="state"
+                              defaultValue={
+                                currentPassenger.state
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="postalCode"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Postal Code / ZIP Code
+                            </Label>
+                            <Input
+                              id="postalCode"
+                              defaultValue={
+                                currentPassenger.postalCode
+                              }
+                              className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="country"
+                              className="text-[#153E7E] font-medium"
+                            >
+                              Country
+                            </Label>
+                            <Select
+                              defaultValue={
+                                currentPassenger.country
+                              }
+                            >
+                              <SelectTrigger className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Pakistan">
+                                  Pakistan
+                                </SelectItem>
+                                <SelectItem value="India">
+                                  India
+                                </SelectItem>
+                                <SelectItem value="UAE">
+                                  United Arab Emirates
+                                </SelectItem>
+                                <SelectItem value="UK">
+                                  United Kingdom
+                                </SelectItem>
+                                <SelectItem value="USA">
+                                  United States
+                                </SelectItem>
+                                <SelectItem value="Canada">
+                                  Canada
+                                </SelectItem>
+                                <SelectItem value="Australia">
+                                  Australia
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          )}
+
+          {/* Modern Footer with Action Buttons */}
+          <div className="border-t border-gray-200 bg-white px-8 py-5 flex justify-end gap-4 flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setEditModalOpen(false)}
+              className="px-8 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-12"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              className="px-8 py-3 bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] hover:from-[#0F2F5A] hover:to-[#153E7E] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12"
+            >
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+        {/* Full Edit Info Modal (same as /manage-booking) */}
+        <Dialog
+          open={isEditModalOpenBD}
+          onOpenChange={setIsEditModalOpenBD}
+        >
+  <DialogContent className="max-w-[640px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col mx-auto my-auto max-h-[72vh]">
+            <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-8 py-6 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-[24px] font-bold text-white mb-1">
+                    Edit Passenger Information
+                  </DialogTitle>
+                  <p className="text-blue-200 text-[14px]">
+                    {editingPassengerBD?.firstName} {editingPassengerBD?.lastName}
+                  </p>
+                </div>
                 <button
-                  onClick={() => setEditModalOpen(false)}
-                  className="text-white hover:text-gray-200 transition-colors duration-200 p-1 rounded-full hover:bg-white hover:bg-opacity-20"
+                  onClick={() => setIsEditModalOpenBD(false)}
+                  className="text-white hover:bg-white/10 transition-colors rounded-full p-2"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-6 h-6" />
                 </button>
               </div>
             </div>
 
-            {currentPassenger && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                <p className="text-sm text-gray-600">
-                  <strong>Passenger:</strong> {currentPassenger.firstName} {currentPassenger.lastName}
-                </p>
-              </div>
-            )}
+            {editingPassengerBD && (
+              <div className="overflow-y-auto flex-1">
+                <div className="p-6 sm:p-8">
+                  <Tabs defaultValue="email" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-100 p-1 rounded-xl mb-6 sm:mb-8">
+                      <TabsTrigger value="email" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </TabsTrigger>
+                      <TabsTrigger value="phone" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        Phone
+                      </TabsTrigger>
+                      <TabsTrigger value="document" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Document
+                      </TabsTrigger>
+                      <TabsTrigger value="address" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#153E7E] data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Address
+                      </TabsTrigger>
+                    </TabsList>
 
-            {editType === "Email" && (
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-orange-500">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Mail className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Current Email</span>
-                  </div>
-                  <p className="text-gray-900 bg-white px-3 py-2 rounded border">
-                    {currentPassenger?.email || "No email on record"}
-                  </p>
-                </div>
+                    <TabsContent value="email" className="space-y-6 mt-6">
+                      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                          <Mail className="w-5 h-5 text-[#FF6B35]" />
+                          Email Information
+                        </h3>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    New Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={editData.newEmail || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, newEmail: e.target.value });
-                      if (formErrors.newEmail) {
-                        setFormErrors({ ...formErrors, newEmail: "" });
-                      }
-                    }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-200 ${
-                      formErrors.newEmail ? 'border-red-500' : 'border-gray-300 hover:border-orange-400'
-                    }`}
-                    placeholder="Enter new email address"
-                  />
-                  {formErrors.newEmail && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.newEmail}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+                        <div className="space-y-5">
+                          <div className="space-y-2">
+                            <Label className="text-[#153E7E] font-medium">Current Email Address</Label>
+                            <div className="relative">
+                              <Input value={editingPassengerBD.email} disabled className="bg-blue-50/50 border-blue-200 text-gray-700 cursor-not-allowed rounded-lg h-12 pl-4" />
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">Current</div>
+                            </div>
+                          </div>
 
-            {editType === "Phone Number" && (
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Phone className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Current Phone Number</span>
-                  </div>
-                  <p className="text-gray-900 bg-white px-3 py-2 rounded border">
-                    {currentPassenger?.phone || "No phone number on record"}
-                  </p>
-                </div>
+                          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    New Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={editData.newPhone || ""}
-                    onChange={(e) => {
-                      setEditData({ ...editData, newPhone: e.target.value });
-                      if (formErrors.newPhone) {
-                        setFormErrors({ ...formErrors, newPhone: "" });
-                      }
-                    }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                      formErrors.newPhone ? 'border-red-500' : 'border-gray-300 hover:border-blue-400'
-                    }`}
-                    placeholder="Enter new phone number (e.g., +1234567890)"
-                  />
-                  {formErrors.newPhone && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {formErrors.newPhone}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Include country code for international numbers
-                  </p>
-                </div>
-              </div>
-            )}
+                          <div className="space-y-2">
+                            <Label htmlFor="newEmail" className="text-[#153E7E] font-medium">New Email Address</Label>
+                            <Input id="newEmail" type="email" placeholder="Enter new email address" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
 
-            {editType === "Travel Document" && (
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-green-500">
-                  <div className="flex items-center gap-3 mb-3">
-                    <FileText className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Current Travel Document</span>
-                  </div>
-                  <div className="bg-white rounded border p-3 space-y-2">
-                    <p><span className="font-medium">Type:</span> {currentPassenger?.documentType || "Not specified"}</p>
-                    <p><span className="font-medium">Number:</span> {currentPassenger?.documentNumber || "Not specified"}</p>
-                    <p><span className="font-medium">Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
-                  </div>
-                </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="confirmEmail" className="text-[#153E7E] font-medium">Confirm New Email Address</Label>
+                            <Input id="confirmEmail" type="email" placeholder="Re-enter new email address" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      New Document Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.newDocumentNumber || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newDocumentNumber: e.target.value });
-                        if (formErrors.newDocumentNumber) {
-                          setFormErrors({ ...formErrors, newDocumentNumber: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 ${
-                        formErrors.newDocumentNumber ? 'border-red-500' : 'border-gray-300 hover:border-green-400'
-                      }`}
-                      placeholder="Enter new document number"
-                    />
-                    {formErrors.newDocumentNumber && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newDocumentNumber}
-                      </p>
-                    )}
-                  </div>
+                    <TabsContent value="phone" className="space-y-6 mt-6">
+                      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2">
+                          <Phone className="w-5 h-5 text-[#FF6B35]" />
+                          Phone Number Information
+                        </h3>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      New Expiry Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={editData.newExpiryDate || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newExpiryDate: e.target.value });
-                        if (formErrors.newExpiryDate) {
-                          setFormErrors({ ...formErrors, newExpiryDate: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 ${
-                        formErrors.newExpiryDate ? 'border-red-500' : 'border-gray-300 hover:border-green-400'
-                      }`}
-                    />
-                    {formErrors.newExpiryDate && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newExpiryDate}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+                        <div className="space-y-5">
+                          <div className="space-y-2">
+                            <Label className="text-[#153E7E] font-medium">Current Phone Number</Label>
+                            <div className="relative">
+                              <Input value={editingPassengerBD.phone} disabled className="bg-blue-50/50 border-blue-200 text-gray-700 cursor-not-allowed rounded-lg h-12 pl-4" />
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">Current</div>
+                            </div>
+                          </div>
 
-            {editType === "Address" && (
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-purple-500">
-                  <div className="flex items-center gap-3 mb-3">
-                    <MapPin className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Current Address Information</span>
-                  </div>
-                  <div className="bg-white rounded border p-3 space-y-2 text-sm">
-                    <p><span className="font-medium">Name:</span> {currentPassenger?.firstName} {currentPassenger?.lastName}</p>
-                    <p><span className="font-medium">Phone:</span> {currentPassenger?.phone || "Not specified"}</p>
-                    <p><span className="font-medium">Document:</span> {currentPassenger?.documentNumber || "Not specified"}</p>
-                    <p><span className="font-medium">Document Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
-                  </div>
-                </div>
+                          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      First Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.firstName || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, firstName: e.target.value });
-                        if (formErrors.firstName) {
-                          setFormErrors({ ...formErrors, firstName: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.firstName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter first name"
-                    />
-                    {formErrors.firstName && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.firstName}
-                      </p>
-                    )}
-                  </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="newPhone" className="text-[#153E7E] font-medium">New Phone Number</Label>
+                            <Input id="newPhone" type="tel" placeholder="Enter new phone number" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Last Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.lastName || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, lastName: e.target.value });
-                        if (formErrors.lastName) {
-                          setFormErrors({ ...formErrors, lastName: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.lastName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter last name"
-                    />
-                    {formErrors.lastName && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.lastName}
-                      </p>
-                    )}
-                  </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="confirmPhone" className="text-[#153E7E] font-medium">Confirm New Phone Number</Label>
+                            <Input id="confirmPhone" type="tel" placeholder="Re-enter new phone number" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={editData.newPhone || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPhone: e.target.value });
-                        if (formErrors.newPhone) {
-                          setFormErrors({ ...formErrors, newPhone: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPhone ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter phone number"
-                    />
-                    {formErrors.newPhone && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPhone}
-                      </p>
-                    )}
-                  </div>
+                    <TabsContent value="document" className="space-y-6 mt-6">
+                      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2"><FileText className="w-5 h-5 text-[#FF6B35]" /> Travel Document Information</h3>
+                        <div className="space-y-5">
+                          <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label htmlFor="firstName" className="text-[#153E7E] font-medium">First Name</Label>
+                              <Input id="firstName" defaultValue={editingPassengerBD.firstName} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="lastName" className="text-[#153E7E] font-medium">Last Name</Label>
+                              <Input id="lastName" defaultValue={editingPassengerBD.lastName} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="middleName" className="text-[#153E7E] font-medium">Middle Name <span className="text-gray-400">(Optional)</span></Label>
+                            <Input id="middleName" placeholder="Enter middle name" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label htmlFor="dateOfBirth" className="text-[#153E7E] font-medium">Date of Birth</Label>
+                              <Input id="dateOfBirth" type="date" defaultValue={editingPassengerBD.dateOfBirth} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="nationality" className="text-[#153E7E] font-medium">Nationality</Label>
+                              <Input id="nationality" defaultValue={editingPassengerBD.nationality} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label htmlFor="passportNumber" className="text-[#153E7E] font-medium">Passport Number</Label>
+                              <Input id="passportNumber" defaultValue={editingPassengerBD.passportNumber} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="passportExpiry" className="text-[#153E7E] font-medium">Passport Expiry Date</Label>
+                              <Input id="passportExpiry" type="date" defaultValue={editingPassengerBD.passportExpiry} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="issuingCountry" className="text-[#153E7E] font-medium">Passport Issuing Country</Label>
+                            <Select defaultValue="Pakistan">
+                              <SelectTrigger className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Pakistan">Pakistan</SelectItem>
+                                <SelectItem value="India">India</SelectItem>
+                                <SelectItem value="UAE">United Arab Emirates</SelectItem>
+                                <SelectItem value="UK">United Kingdom</SelectItem>
+                                <SelectItem value="USA">United States</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Passport Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.newPassportNumber || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPassportNumber: e.target.value });
-                        if (formErrors.newPassportNumber) {
-                          setFormErrors({ ...formErrors, newPassportNumber: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPassportNumber ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter passport number"
-                    />
-                    {formErrors.newPassportNumber && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPassportNumber}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Passport Expiry Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={editData.newPassportExpiry || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPassportExpiry: e.target.value });
-                        if (formErrors.newPassportExpiry) {
-                          setFormErrors({ ...formErrors, newPassportExpiry: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPassportExpiry ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                    />
-                    {formErrors.newPassportExpiry && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPassportExpiry}
-                      </p>
-                    )}
-                  </div>
+                    <TabsContent value="address" className="space-y-6 mt-6">
+                      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-[18px] font-semibold text-[#153E7E] mb-6 flex items-center gap-2"><MapPin className="w-5 h-5 text-[#FF6B35]" /> Address Information</h3>
+                        <div className="space-y-5">
+                          <div className="space-y-2">
+                            <Label htmlFor="street" className="text-[#153E7E] font-medium">Street Address</Label>
+                            <Input id="street" defaultValue={editingPassengerBD.street} placeholder="Enter street address" className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="apartment" className="text-[#153E7E] font-medium">Apartment, Suite, etc. <span className="text-gray-400">(Optional)</span></Label>
+                            <Input id="apartment" placeholder="Apt, Suite, Unit, Building, Floor, etc." className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label htmlFor="city" className="text-[#153E7E] font-medium">City</Label>
+                              <Input id="city" defaultValue={editingPassengerBD.city} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="state" className="text-[#153E7E] font-medium">State / Province</Label>
+                              <Input id="state" defaultValue={editingPassengerBD.state} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label htmlFor="postalCode" className="text-[#153E7E] font-medium">Postal Code / ZIP Code</Label>
+                              <Input id="postalCode" defaultValue={editingPassengerBD.postalCode} className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="country" className="text-[#153E7E] font-medium">Country</Label>
+                              <Select defaultValue={editingPassengerBD.country}>
+                                <SelectTrigger className="border-gray-300 focus:border-[#153E7E] focus:ring-2 focus:ring-[#153E7E]/20 rounded-lg h-12">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pakistan">Pakistan</SelectItem>
+                                  <SelectItem value="India">India</SelectItem>
+                                  <SelectItem value="UAE">United Arab Emirates</SelectItem>
+                                  <SelectItem value="UK">United Kingdom</SelectItem>
+                                  <SelectItem value="USA">United States</SelectItem>
+                                  <SelectItem value="Canada">Canada</SelectItem>
+                                  <SelectItem value="Australia">Australia</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </div>
             )}
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={handleSaveEdit}
-                disabled={loading}
-                className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-6 py-2 rounded-md font-medium text-sm flex-1 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditModalOpen(false);
-                  setFormErrors({});
-                }}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-medium text-sm flex-1"
-              >
-                Cancel
-              </Button>
+            <div className="border-t border-gray-200 bg-white px-8 py-5 flex justify-end gap-4 flex-shrink-0">
+              <Button variant="outline" onClick={() => setIsEditModalOpenBD(false)} className="px-8 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-12">Cancel</Button>
+              <Button onClick={handleSaveEditBD} className="px-8 py-3 bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] hover:from-[#0F2F5A] hover:to-[#153E7E] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12">Save Changes</Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

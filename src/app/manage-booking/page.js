@@ -188,21 +188,47 @@ export default function ManageBooking() {
       <Header />
 
       <div className="flex flex-col lg:flex-row">
-        <aside className="w-full lg:w-64 lg:min-h-screen order-2 lg:order-1">
+        {/* Desktop Sidebar - hidden on small screens */}
+        <aside className="hidden lg:block w-64 lg:min-h-screen order-2 lg:order-1">
           <Sidebar />
         </aside>
 
+        {/* Mobile/Tablet compact tab navigation - visible only on small screens */}
+        <div className="lg:hidden w-full px-2 sm:px-4 py-3 order-1 bg-white border-b border-gray-200">
+          <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
+            {[
+              'Booking History',
+              'Split Itinerary',
+              'Add Passengers',
+              'Special Note',
+              'Customer Support',
+            ].map((item) => (
+              <button
+                key={item}
+                onClick={() => setActiveMenuItem(item)}
+                className={`whitespace-nowrap px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                  activeMenuItem === item
+                    ? 'bg-[#FF6B35] text-white shadow-md'
+                    : 'bg-white text-[#153E7E] border border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Main Content */}
-        <div className="flex-1 p-3 sm:p-4 lg:p-6 order-1 lg:order-2">
+        <div className="flex-1 p-2 sm:p-3 md:p-4 lg:p-6 order-2 lg:order-2 mt-2 sm:mt-4 lg:mt-0">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-xl sm:text-2xl lg:text-[26px] font-semibold text-[#FF6B35] mb-4 lg:mb-6 tracking-wide uppercase">
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-[26px] font-semibold text-[#FF6B35] mb-3 sm:mb-4 lg:mb-6 tracking-wide uppercase">
               {activeMenuItem}
             </h1>
 
             {/* Booking History Card */}
-            <Card className="mb-4 lg:mb-6 border border-gray-200 shadow-md w-full max-w-full mx-auto rounded-xl overflow-hidden">
-              <CardHeader className="bg-white border-b border-gray-200 py-3 px-4 flex justify-center">
-                <CardTitle className="text-lg sm:text-xl lg:text-[20px] font-bold text-[#2E4A6B] tracking-wide relative inline-block">
+            <Card className="mb-3 sm:mb-4 lg:mb-6 border border-gray-200 shadow-md w-full max-w-full mx-auto rounded-xl overflow-hidden">
+              <CardHeader className="bg-white border-b border-gray-200 py-2 sm:py-3 px-2 sm:px-4 flex justify-center">
+                <CardTitle className="text-base sm:text-lg md:text-xl lg:text-[20px] font-bold text-[#2E4A6B] tracking-wide relative inline-block">
                   <span className="relative inline-block">
                     Booking History
                     <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
@@ -212,26 +238,26 @@ export default function ManageBooking() {
 
               <CardContent className="p-0">
                 <div className="overflow-x-auto bg-white">
-                  <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B]">
-                    <thead className="bg-[#002b5c] text-white text-[15px] font-medium uppercase">
+                  <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] min-w-[600px]">
+                    <thead className="bg-[#002b5c] text-white text-xs sm:text-sm md:text-[15px] font-medium uppercase">
                       <tr>
-                        <th className="text-left py-3 px-5 border-b border-gray-200">
-                          Cherry Flight Booking #
+                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
+                          Booking #
                         </th>
-                        <th className="text-left py-3 px-5 border-b border-gray-200">
-                          Date (Issue)
+                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
+                          Date
                         </th>
-                        <th className="text-left py-3 px-5 border-b border-gray-200">
-                          Customer Name
+                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
+                          Flight Details
                         </th>
-                        <th className="text-left py-3 px-5 border-b border-gray-200">
+                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
                           Trip Type
                         </th>
-                        <th className="text-center py-3 px-5 border-b border-gray-200 w-16"></th>
+                        <th className="text-center py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200 w-12 sm:w-16"></th>
                       </tr>
                     </thead>
 
-                    <tbody className="text-[15px] font-normal">
+                    <tbody className="text-sm sm:text-[15px] font-normal">
                       {bookingHistoryData.map(
                         (booking, index) => (
                           <>
@@ -246,16 +272,16 @@ export default function ManageBooking() {
                                   : "bg-[#F9FBFF]"
                               } ${selectedPlanRow === booking.id ? "bg-[#E8F4FD]" : ""}`}
                             >
-                              <td className="py-3 px-5">
+                              <td className="py-2 px-3 sm:py-3 sm:px-5">
                                 {booking.bookingRef}
                               </td>
-                              <td className="py-3 px-5">
+                              <td className="py-2 px-3 sm:py-3 sm:px-5">
                                 {booking.dateIssue}
                               </td>
-                              <td className="py-3 px-5">
+                              <td className="py-2 px-3 sm:py-3 sm:px-5">
                                 {booking.flightNumber}
                               </td>
-                              <td className="py-3 px-5">
+                              <td className="py-2 px-3 sm:py-3 sm:px-5">
                                 {booking.tripType}
                               </td>
                               <td className="py-3 px-5 text-center">
@@ -280,12 +306,12 @@ export default function ManageBooking() {
 
                                     <div className="overflow-x-auto bg-white rounded-lg shadow">
                                       <table className="w-full border border-gray-200 text-[#2E4A6B]">
-                                        <thead className="bg-[#002b5c] text-white text-[14px] font-medium uppercase">
+                                        <thead className="bg-[#002b5c] text-white text-sm sm:text-[14px] font-medium uppercase">
                                           <tr>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                            <th className="text-left py-2 px-2 sm:py-3 sm:px-4 border-b border-gray-200">
                                               Sr No.
                                             </th>
-                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                            <th className="text-left py-2 px-2 sm:py-3 sm:px-4 border-b border-gray-200">
                                               Passenger Name
                                             </th>
                                             <th className="text-left py-3 px-4 border-b border-gray-200">
@@ -393,7 +419,7 @@ export default function ManageBooking() {
                                     {/* View Ticket Actions: show when a valid ticket response exists for this booking */}
                                     <div className="mt-6 flex justify-center">
                                       {ticketResponses[booking.id] && ticketResponses[booking.id].hasTicket ? (
-                                        <div className="flex flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
+                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
                                           <Button
                                             onClick={() => handleResendTicket(booking.id)}
                                             className="flex items-center gap-2 px-3 py-2 rounded-md"
@@ -440,7 +466,7 @@ export default function ManageBooking() {
 
             {/* Actions for selected booking: centered row with three buttons */}
             <div className="mt-6 flex justify-center">
-              <div className="flex flex-row items-center justify-center gap-3 w-full max-w-md px-4">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md px-4">
                 <Button
                   onClick={() => handleResendTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
@@ -485,8 +511,10 @@ export default function ManageBooking() {
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
       >
-        <DialogContent className="max-w-[1100px] w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[95vh] bg-gradient-to-br from-white to-gray-50 border-none rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col">
+        {/* <DialogContent className="max-w-[720px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-xl shadow-xl p-0 overflow-hidden flex flex-col mx-auto"> */}
           {/* Modern Header */}
+          <DialogContent className="max-w-[640px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col mx-auto my-auto max-h-[72vh]">
+
           <div className="bg-gradient-to-r from-[#002b5c] to-[#003d7a] px-8 py-6 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
@@ -508,7 +536,7 @@ export default function ManageBooking() {
 
           {editingPassenger && (
             <div className="overflow-y-auto flex-1">
-              <div className="p-8">
+              <div className="p-6 sm:p-8">
                 {/* Beautiful Tabs */}
                 <Tabs defaultValue="email" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-100 p-1 rounded-xl mb-6 sm:mb-8">
