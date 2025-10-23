@@ -110,6 +110,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user = {
           ...session.user,
           ...token.existingUser,
+          // Use the original name from Google to prevent duplication
+          user_Name: session.user.name,
         };
       }
       return session;

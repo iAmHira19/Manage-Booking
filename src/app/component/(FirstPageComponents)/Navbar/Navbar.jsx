@@ -16,6 +16,7 @@ import getUserSignUp from "@/services/signup";
 
 // Providers Imports
 import { useSignInContext } from "@/providers/SignInStateProvider";
+import { cleanupUsername } from "@/utils/cleanupUsername";
 
 // Icon Imports
 import { MdArrowDropDown } from "react-icons/md";
@@ -35,6 +36,7 @@ const Navbar = ({ isMobile }) => {
   const {
     signInFn: signInContext,
     signOutFn: signOutContext,
+    clearAllStorage,
     username: usernameContext,
     setUsername: setUsernameContext,
     setUserId: setUserIdContext,
@@ -76,6 +78,11 @@ const Navbar = ({ isMobile }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Derive a clean display name using centralized cleanup
+  const displayUsername = React.useMemo(() => {
+    return cleanupUsername(usernameContext || "");
+  }, [usernameContext]);
 
   // Ensure currency list is available when opening the modal
   const ensureCurrenciesLoaded = async () => {
@@ -121,16 +128,23 @@ const Navbar = ({ isMobile }) => {
       setCheckSessionStorage(false);
       setIsSignedIn(IssignedInLoc);
       if (IssignedInLoc) {
-        setUsernameContext(sessionStorage.getItem("username"));
+        // Get the username from sessionStorage and ensure it's cleaned immediately
+        const storedUsername = sessionStorage.getItem("username");
+        const cleanedStored = cleanupUsername(storedUsername || "");
+        // Persist cleaned value back to storage to avoid stale duplicates
+        sessionStorage.setItem("username", cleanedStored);
+        setUsernameContext(cleanedStored);
         setUserIdContext(sessionStorage.getItem("userId"));
         setUserGroupContext(sessionStorage.getItem("userGroup"));
       }
     }
   }, [checkSessionStorage, setCheckSessionStorage, setIsSignedIn, setUsernameContext, setUserIdContext, setUserGroupContext]);
   useEffect(() => {
-    if (session && session.user?.user_Name && session.user?.usr_Group) {
-      setUsernameContext(session?.user?.user_Name);
-      sessionStorage.setItem("username", session?.user?.user_Name);
+    if (session && session.user?.name && session.user?.usr_Group) {
+      const originalName = session.user.name;
+      const cleaned = cleanupUsername(originalName);
+      setUsernameContext(cleaned);
+      sessionStorage.setItem("username", cleaned);
       setUserIdContext(session?.user?.user_ID || "Public");
       sessionStorage.setItem("userId", session?.user?.user_ID || "Public");
       setUserGroupContext(session?.user?.usr_Group || null);
@@ -155,8 +169,12 @@ const Navbar = ({ isMobile }) => {
               toast.error("Invalid credentials");
               return;
             }
-            setUsernameContext(user?.[0]?.user_Name);
-            sessionStorage.setItem("username", user?.[0]?.user_Name);
+            // Set the username - use original name if available, otherwise clean the database name
+            const originalName = user?.[0]?.user_Name || "";
+            // For regular sign-in, we need to clean the database name since it might be corrupted
+            const cleanedUsername = cleanupUsername(originalName);
+            setUsernameContext(cleanedUsername);
+            sessionStorage.setItem("username", cleanedUsername);
             setUserIdContext(user?.[0]?.user_ID);
             sessionStorage.setItem("userId", user?.[0]?.user_ID);
             setUserGroupContext(user?.[0]?.usr_Group);
@@ -293,6 +311,8 @@ const Navbar = ({ isMobile }) => {
     setOpenDropdown((prev) => (prev === key ? null : key));
   };
 
+
+
   return (
     <>
       <Toaster />
@@ -414,7 +434,7 @@ const Navbar = ({ isMobile }) => {
             onClick={(e) => handleToggle("Username", e)}
             className="text-blue-900 text-base flex items-center font-gotham uppercase"
           >
-            {usernameContext} <MdArrowDropDown />
+            {displayUsername} <MdArrowDropDown />
           </Link>
           <ul
             className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 left-auto lg:-left-5 min-w-48 items-center ${
@@ -440,6 +460,26 @@ const Navbar = ({ isMobile }) => {
               <span className="text-sm font-gotham flex items-center justify-center cursor-pointer text-white">
                 <span className="pl-2 font-gotham font-bold uppercase">
                   Logout
+                </span>
+              </span>
+            </li>
+            <li
+              className="w-full text-center block hover:bg-red-500 px-1 py-2"
+              onClick={() => {
+                // Clear username specifically and force refresh
+                sessionStorage.removeItem("username");
+                setUsernameContext("");
+                clearAllStorage();
+                toast.success("Username cleared! Please refresh the page to see the fix.");
+                // Force page refresh after a short delay
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              }}
+            >
+              <span className="text-xs font-gotham flex items-center justify-center cursor-pointer text-white">
+                <span className="pl-2 font-gotham font-bold">
+                  Fix Username
                 </span>
               </span>
             </li>

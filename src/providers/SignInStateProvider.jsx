@@ -1,12 +1,29 @@
 "use client";
 import React, { useState, createContext, useContext, useEffect } from "react";
 import { useCurrencyApi } from "@/utils/getCurrencyForCurrencyApi";
+import { cleanupUsername } from "@/utils/cleanupUsername";
 
 const signInContext = createContext();
 
 export const SignInContextProvider = ({ children }) => {
   const [isSignedIn, setIsSignedIn] = useState(null);
   const [username, setUsername] = useState("");
+
+  // Wrapper function for setUsername - ensure a clean display name across the app
+  const setUsernameClean = (username) => {
+    const cleanedUsername = cleanupUsername(username ? String(username).trim() : "");
+    setUsername(cleanedUsername);
+    // Persist cleaned username so future sessions don't reintroduce duplicates
+    if (typeof window !== "undefined") {
+      try {
+        if (cleanedUsername) sessionStorage.setItem("username", cleanedUsername);
+        else sessionStorage.removeItem("username");
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+    return cleanedUsername;
+  };
   const [userId, setUserId] = useState("Public");
   const [userGroup, setUserGroup] = useState(null);
   const [searchCurrencyCode, setSearchCurrencyCode] = useState(null);
@@ -31,6 +48,19 @@ export const SignInContextProvider = ({ children }) => {
 
       if (storedSignIn) {
         setIsSignedIn(storedSignIn === "true");
+      }
+
+      // Get the username from sessionStorage and ensure it's cleaned
+      const storedUsername = sessionStorage.getItem("username");
+      if (storedUsername) {
+        const cleaned = cleanupUsername(storedUsername);
+        setUsername(cleaned);
+        // Write back cleaned value to prevent stale duplicates
+        try {
+          sessionStorage.setItem("username", cleaned);
+        } catch (e) {
+          // ignore storage errors
+        }
       }
 
       // Use sessionStorage currency first (this is what other parts of the app read),
@@ -101,8 +131,28 @@ export const SignInContextProvider = ({ children }) => {
 
   const signOutFn = () => {
     if (typeof window !== "undefined") {
+      // Clear the username from sessionStorage
+      sessionStorage.removeItem("username");
+
       sessionStorage.setItem("signIn", "false");
       setIsSignedIn(false);
+    }
+  };
+
+  // Utility function to completely clean storage and start fresh
+  const clearAllStorage = () => {
+    if (typeof window !== "undefined") {
+      // Clear all storage
+      sessionStorage.clear();
+      localStorage.clear();
+
+      // Reset all state
+      setIsSignedIn(false);
+      setUsername("");
+      setUserId("Public");
+      setUserGroup(null);
+      setSearchCurrencyCode("PKR");
+      setSearchCurrencySymbol("PKR");
     }
   };
 
@@ -131,10 +181,11 @@ export const SignInContextProvider = ({ children }) => {
   const contextValue = {
     signInFn,
     signOutFn,
+    clearAllStorage, // Utility to completely reset storage
     isSignedIn: isHydrated ? isSignedIn : null,
     setIsSignedIn,
     username,
-    setUsername,
+    setUsername: setUsernameClean, // Use the cleaning wrapper function
     userId,
     setUserId,
     userGroup,

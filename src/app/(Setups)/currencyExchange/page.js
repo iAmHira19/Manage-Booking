@@ -675,7 +675,7 @@ function Page() {
                 new Date().getMonth() + 1
               }-${new Date().getUTCDate()}`,
               tpEXR_RATE: values.exchangeRate,
-              tpEXR_MODIFIEDBY: sessionStorage.getItem("username").trim(),
+              tpEXR_MODIFIEDBY: sessionStorage.getItem("username"),
             };
             let resp = await setExchangeSetup(data);
 

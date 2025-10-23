@@ -8,11 +8,51 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Upload, ChevronDown, ChevronUp, X, Mail, Phone, FileText, MapPin, Eye, Printer } from "lucide-react";
+import { Upload, ChevronDown, ChevronUp, X, Mail, Phone, FileText, MapPin, Eye, Printer, AlertCircle } from "lucide-react";
 import ImageWithFallback from "@/components/figma/ImageWithFallback";
 import Header from "@/app/component/(FirstPageComponents)/Header/Header";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+
+// Validation utility functions
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhone = (phone) => {
+  // Remove all non-digit characters for validation
+  const digitsOnly = phone.replace(/\D/g, '');
+  // Pakistani phone number should be 11 digits starting with 92 or 10 digits starting with 0
+  return digitsOnly.length >= 10 && digitsOnly.length <= 13 && /^\+?92[0-9]{9}$|^\+?[0-9]{10,12}$/.test(phone);
+};
+
+const validateName = (name) => {
+  const nameRegex = /^[a-zA-Z\s]+$/;
+  return name.trim().length >= 2 && nameRegex.test(name.trim());
+};
+
+const validatePassportNumber = (passport) => {
+  const passportRegex = /^[A-Z0-9]+$/;
+  return passport.trim().length >= 5 && passportRegex.test(passport.trim());
+};
+
+const validatePostalCode = (postalCode) => {
+  const postalRegex = /^[0-9]+$/;
+  return postalRegex.test(postalCode.trim()) && postalCode.trim().length >= 4;
+};
+
+const validateFutureDate = (dateString) => {
+  const selectedDate = new Date(dateString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return selectedDate >= today;
+};
+
+const validateCherryBookingReference = (cherryRef) => {
+  const cherryRegex = /^[A-Z0-9]+$/;
+  return cherryRef.trim().length === 6 && cherryRegex.test(cherryRef.trim());
+};
 
 // Booking data for the booking history table
 const bookingHistoryData = [
@@ -61,6 +101,218 @@ export default function ManageBooking() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPassenger, setEditingPassenger] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Form state and validation
+  const [formData, setFormData] = useState({
+    newEmail: '',
+    confirmEmail: '',
+    newPhone: '',
+    confirmPhone: '',
+    cherryBookingReference: '',
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    dateOfBirth: '',
+    nationality: '',
+    passportNumber: '',
+    passportExpiry: '',
+    issuingCountry: 'Pakistan',
+    street: '',
+    apartment: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'Pakistan'
+  });
+
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Validation functions
+  const validateField = (fieldName, value) => {
+    let error = '';
+
+    switch (fieldName) {
+      case 'newEmail':
+        if (!value.trim()) {
+          error = 'Email address is required';
+        } else if (!validateEmail(value)) {
+          error = 'Please enter a valid email address';
+        }
+        break;
+
+      case 'confirmEmail':
+        if (!value.trim()) {
+          error = 'Please confirm your email address';
+        } else if (value !== formData.newEmail) {
+          error = 'Email addresses do not match';
+        }
+        break;
+
+      case 'newPhone':
+        if (!value.trim()) {
+          error = 'Phone number is required';
+        } else if (!validatePhone(value)) {
+          error = 'Please enter a valid phone number';
+        }
+        break;
+
+      case 'confirmPhone':
+        if (!value.trim()) {
+          error = 'Please confirm your phone number';
+        } else if (value !== formData.newPhone) {
+          error = 'Phone numbers do not match';
+        }
+        break;
+
+      case 'firstName':
+        if (!value.trim()) {
+          error = 'First name is required';
+        } else if (!validateName(value)) {
+          error = 'First name must contain only letters';
+        }
+        break;
+
+      case 'lastName':
+        if (!value.trim()) {
+          error = 'Last name is required';
+        } else if (!validateName(value)) {
+          error = 'Last name must contain only letters';
+        }
+        break;
+
+      case 'middleName':
+        if (value.trim() && !validateName(value)) {
+          error = 'Middle name must contain only letters';
+        }
+        break;
+
+      case 'dateOfBirth':
+        if (!value.trim()) {
+          error = 'Date of birth is required';
+        }
+        break;
+
+      case 'nationality':
+        if (!value.trim()) {
+          error = 'Nationality is required';
+        } else if (!validateName(value)) {
+          error = 'Nationality must contain only letters';
+        }
+        break;
+
+      case 'passportNumber':
+        if (!value.trim()) {
+          error = 'Passport number is required';
+        } else if (!validatePassportNumber(value)) {
+          error = 'Passport number must be alphanumeric and at least 5 characters';
+        }
+        break;
+
+      case 'passportExpiry':
+        if (!value.trim()) {
+          error = 'Passport expiry date is required';
+        } else if (!validateFutureDate(value)) {
+          error = 'Passport expiry date must be in the future';
+        }
+        break;
+
+      case 'street':
+        if (!value.trim()) {
+          error = 'Street address is required';
+        }
+        break;
+
+      case 'city':
+        if (!value.trim()) {
+          error = 'City is required';
+        }
+        break;
+
+      case 'state':
+        if (!value.trim()) {
+          error = 'State/Province is required';
+        }
+        break;
+
+      case 'postalCode':
+        if (!value.trim()) {
+          error = 'Postal code is required';
+        } else if (!validatePostalCode(value)) {
+          error = 'Please enter a valid postal code';
+        }
+        break;
+
+      case 'cherryBookingReference':
+        if (!value.trim()) {
+          error = 'Cherry booking reference is required';
+        } else if (!validateCherryBookingReference(value)) {
+          error = 'Booking reference must be exactly 6 characters (letters and numbers)';
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return error;
+  };
+
+  const handleInputChange = (fieldName, value) => {
+    // Special handling for cherry booking reference to enforce 6-character limit
+    if (fieldName === 'cherryBookingReference') {
+      // Only allow up to 6 characters
+      const limitedValue = value.toUpperCase().slice(0, 6);
+      setFormData(prev => ({
+        ...prev,
+        [fieldName]: limitedValue
+      }));
+
+      // Real-time validation
+      const error = validateField(fieldName, limitedValue);
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: error
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [fieldName]: value
+      }));
+
+      // Real-time validation
+      const error = validateField(fieldName, value);
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: error
+      }));
+    }
+
+    // Check if form is valid after each change
+    checkFormValidity();
+  };
+
+  const checkFormValidity = () => {
+    const errors = {};
+
+    // Validate all required fields
+    Object.keys(formData).forEach(field => {
+      if (field !== 'middleName' && field !== 'apartment') {
+        const error = validateField(field, formData[field]);
+        if (error) errors[field] = error;
+      }
+    });
+
+    // For optional fields, only validate if they have values
+    if (formData.middleName) {
+      const error = validateField('middleName', formData.middleName);
+      if (error) errors.middleName = error;
+    }
+
+    setValidationErrors(errors);
+    setIsFormValid(Object.keys(errors).length === 0);
+  };
+
   // Ticket responses keyed by booking id. When hasTicket is true the three actions are shown.
   const [ticketResponses, setTicketResponses] = useState({
     // Example: booking id 1 has a ticket. Real responses should be set from API.
@@ -125,6 +377,32 @@ export default function ManageBooking() {
   };
 
   const handleEditInfo = (passenger) => {
+    // Reset form data when opening modal
+    setFormData({
+      newEmail: '',
+      confirmEmail: '',
+      newPhone: '',
+      confirmPhone: '',
+      firstName: passenger.passengerName.split(" ")[0] || '',
+      lastName: passenger.passengerName.split(" ").slice(-1)[0] || '',
+      middleName: '',
+      dateOfBirth: '',
+      nationality: '',
+      passportNumber: '',
+      passportExpiry: '',
+      issuingCountry: 'Pakistan',
+      street: '',
+      apartment: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'Pakistan'
+    });
+
+    // Reset validation errors
+    setValidationErrors({});
+    setIsFormValid(false);
+
     setEditingPassenger({
       ...passenger,
       email: "passenger@email.com",
@@ -145,9 +423,34 @@ export default function ManageBooking() {
   };
 
   const handleSaveEdit = () => {
-    // Handle save logic here
-    setIsEditModalOpen(false);
-    setEditingPassenger(null);
+    if (isFormValid) {
+      // Handle save logic here - only executes if form is valid
+      console.log('Form data being saved:', formData);
+      alert('Form validation passed! Data would be saved here.');
+      setIsEditModalOpen(false);
+      setEditingPassenger(null);
+      // Reset form data
+      setFormData({
+        newEmail: '',
+        confirmEmail: '',
+        newPhone: '',
+        confirmPhone: '',
+        firstName: '',
+        lastName: '',
+        middleName: '',
+        dateOfBirth: '',
+        nationality: '',
+        passportNumber: '',
+        passportExpiry: '',
+        issuingCountry: 'Pakistan',
+        street: '',
+        apartment: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'Pakistan'
+      });
+    }
   };
 
   const handleResendTicket = (bookingId) => {
@@ -610,8 +913,20 @@ export default function ManageBooking() {
                             id="newEmail"
                             type="email"
                             placeholder="Enter new email address"
-                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                            value={formData.newEmail}
+                            onChange={(e) => handleInputChange('newEmail', e.target.value)}
+                            className={`rounded-lg h-12 ${
+                              validationErrors.newEmail
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                            }`}
                           />
+                          {validationErrors.newEmail && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.newEmail}
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -625,8 +940,20 @@ export default function ManageBooking() {
                             id="confirmEmail"
                             type="email"
                             placeholder="Re-enter new email address"
-                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                            value={formData.confirmEmail}
+                            onChange={(e) => handleInputChange('confirmEmail', e.target.value)}
+                            className={`rounded-lg h-12 ${
+                              validationErrors.confirmEmail
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                            }`}
                           />
+                          {validationErrors.confirmEmail && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.confirmEmail}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -673,8 +1000,20 @@ export default function ManageBooking() {
                             id="newPhone"
                             type="tel"
                             placeholder="Enter new phone number"
-                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                            value={formData.newPhone}
+                            onChange={(e) => handleInputChange('newPhone', e.target.value)}
+                            className={`rounded-lg h-12 ${
+                              validationErrors.newPhone
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                            }`}
                           />
+                          {validationErrors.newPhone && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.newPhone}
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -688,8 +1027,20 @@ export default function ManageBooking() {
                             id="confirmPhone"
                             type="tel"
                             placeholder="Re-enter new phone number"
-                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                            value={formData.confirmPhone}
+                            onChange={(e) => handleInputChange('confirmPhone', e.target.value)}
+                            className={`rounded-lg h-12 ${
+                              validationErrors.confirmPhone
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                            }`}
                           />
+                          {validationErrors.confirmPhone && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.confirmPhone}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -707,6 +1058,38 @@ export default function ManageBooking() {
                       </h3>
 
                       <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="cherryBookingReference"
+                            className="text-[#002b5c] font-medium"
+                          >
+                            Cherry Booking Reference Number
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="cherryBookingReference"
+                              placeholder="Enter 6-character booking reference"
+                              value={formData.cherryBookingReference}
+                              onChange={(e) => handleInputChange('cherryBookingReference', e.target.value.toUpperCase())}
+                              maxLength={6}
+                              className={`rounded-lg h-12 pr-16 ${
+                                validationErrors.cherryBookingReference
+                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                              }`}
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">
+                              {formData.cherryBookingReference.length}/6
+                            </div>
+                          </div>
+                          {validationErrors.cherryBookingReference && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.cherryBookingReference}
+                            </div>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-2 gap-5">
                           <div className="space-y-2">
                             <Label
@@ -717,11 +1100,20 @@ export default function ManageBooking() {
                             </Label>
                             <Input
                               id="firstName"
-                              defaultValue={
-                                editingPassenger.firstName
-                              }
-                              className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                              value={formData.firstName}
+                              onChange={(e) => handleInputChange('firstName', e.target.value)}
+                              className={`rounded-lg h-12 ${
+                                validationErrors.firstName
+                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                              }`}
                             />
+                            {validationErrors.firstName && (
+                              <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                                <AlertCircle className="w-4 h-4" />
+                                {validationErrors.firstName}
+                              </div>
+                            )}
                           </div>
 
                           <div className="space-y-2">
@@ -733,11 +1125,20 @@ export default function ManageBooking() {
                             </Label>
                             <Input
                               id="lastName"
-                              defaultValue={
-                                editingPassenger.lastName
-                              }
-                              className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                              value={formData.lastName}
+                              onChange={(e) => handleInputChange('lastName', e.target.value)}
+                              className={`rounded-lg h-12 ${
+                                validationErrors.lastName
+                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                              }`}
                             />
+                            {validationErrors.lastName && (
+                              <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                                <AlertCircle className="w-4 h-4" />
+                                {validationErrors.lastName}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -754,8 +1155,20 @@ export default function ManageBooking() {
                           <Input
                             id="middleName"
                             placeholder="Enter middle name"
-                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
+                            value={formData.middleName}
+                            onChange={(e) => handleInputChange('middleName', e.target.value)}
+                            className={`rounded-lg h-12 ${
+                              validationErrors.middleName
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
+                            }`}
                           />
+                          {validationErrors.middleName && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.middleName}
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-5">
@@ -1019,7 +1432,12 @@ export default function ManageBooking() {
             </Button>
             <Button
               onClick={handleSaveEdit}
-              className="px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-10 sm:h-12 text-sm sm:text-base"
+              disabled={!isFormValid}
+              className={`px-4 sm:px-8 py-2 sm:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-10 sm:h-12 text-sm sm:text-base ${
+                isFormValid
+                  ? 'bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               Save Changes
             </Button>
