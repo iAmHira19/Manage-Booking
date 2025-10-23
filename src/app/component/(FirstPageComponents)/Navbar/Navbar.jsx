@@ -343,15 +343,32 @@ const Navbar = ({ isMobile }) => {
             ensureCurrenciesLoaded().finally(() => setShowCurrencyModal(true));
           }}
         >
-          {/* Show human-friendly symbol/description in the navbar, but the provider stores the tpCUR_CODE */}
+          {/* Show Currency (ISO) in the navbar regardless of underlying storage code */}
           {(() => {
-            // Attempt to find the selected currency in the loaded list for a nicer display.
-            const found = (currencyExchange || []).find(
-              (c) => String(c.tpCUR_CODE || "").toLowerCase() === String(searchCurrencyCodeContext || "").toLowerCase()
-            );
-            if (found) return `${found.tpCUR_SYMBOL || found.tpCUR_DESCRIPTION || found.tpCUR_CODE} `;
-            // Fallback to what provider exposes (likely a code like 'PKR')
-            return searchCurrencyCodeContext || "PKR";
+            // Attempt to find the selected currency by code OR symbol to handle numeric codes
+            const scel = String(searchCurrencyCodeContext || "").trim();
+            const lower = scel.toLowerCase();
+            const found = (currencyExchange || []).find((c) => {
+              const code = String(c?.tpCUR_CODE || "").toLowerCase();
+              const symbol = String(c?.tpCUR_SYMBOL || "").toLowerCase();
+              return code === lower || symbol === lower;
+            });
+
+            // Derive a 3-letter ISO-like display code
+            const isIso = (val) => /^[A-Za-z]{3}$/.test(String(val || ""));
+            let display = "";
+            if (found) {
+              if (isIso(found.tpCUR_SYMBOL)) display = String(found.tpCUR_SYMBOL).toUpperCase();
+              else if (isIso(found.tpCUR_CODE)) display = String(found.tpCUR_CODE).toUpperCase();
+              else if (found.tpCUR_DESCRIPTION) {
+                // Try to extract '(XYZ)' from description
+                const m = String(found.tpCUR_DESCRIPTION).match(/\(([A-Za-z]{3})\)/);
+                if (m && isIso(m[1])) display = m[1].toUpperCase();
+              }
+            }
+            if (!display && isIso(scel)) display = scel.toUpperCase();
+            if (!display) display = "PKR"; // final fallback
+            return `Currency (${display})`;
           })()}
         </li>
         <li className="hidden">
