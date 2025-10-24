@@ -104,14 +104,27 @@ const handleVerifyOtp = async () => {
     // containing the word 'success' or the exact success message. Otherwise map known errors.
     const lower = data.toLowerCase();
     if (lower.includes("success") || lower.includes("validated")) {
-      // Persist minimal booking context for the details page to consume.
+      // Fetch itinerary data using the PNR
       try {
+        const itineraryRes = await fetch(`https://localhost:44379/api/tp/getItinerary?PNR=${reference}`);
+        if (!itineraryRes.ok) {
+          throw new Error("Failed to fetch itinerary details.");
+        }
+        const itineraryData = await itineraryRes.json();
+
+        // Store booking context and itinerary data in sessionStorage
         sessionStorage.setItem(
           "manageBookingContext",
-          JSON.stringify({ bookingId: reference, lastName })
+          JSON.stringify({
+            bookingId: reference,
+            lastName,
+            itinerary: itineraryData, // Store the full itinerary data
+          })
         );
-      } catch (e) {
-        // ignore session storage errors in restricted environments
+      } catch (err) {
+        setError("Failed to fetch itinerary details. Please try again.");
+        console.error(err);
+        return;
       }
 
       setOtpSent(false);
@@ -119,7 +132,7 @@ const handleVerifyOtp = async () => {
       try {
         router.push("/manage_booking/booking_details");
       } catch (e) {
-        // fallback
+        // Fallback
         window.location.href = "/manage_booking/booking_details";
       }
       return;

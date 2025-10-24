@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,90 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Upload, ChevronDown, ChevronUp, X, Mail, Phone, FileText, MapPin, Eye, Printer, AlertCircle } from "lucide-react";
+import { Upload, ChevronDown, ChevronUp, X, Mail, Phone, FileText, MapPin, Eye, Printer } from "lucide-react";
 import ImageWithFallback from "@/components/figma/ImageWithFallback";
 import Header from "@/app/component/(FirstPageComponents)/Header/Header";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
-
-// Validation utility functions
-const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const validatePhone = (phone) => {
-  // Remove all non-digit characters for validation
-  const digitsOnly = phone.replace(/\D/g, '');
-  // Pakistani phone number should be 11 digits starting with 92 or 10 digits starting with 0
-  return digitsOnly.length >= 10 && digitsOnly.length <= 13 && /^\+?92[0-9]{9}$|^\+?[0-9]{10,12}$/.test(phone);
-};
-
-const validateName = (name) => {
-  const nameRegex = /^[a-zA-Z\s]+$/;
-  return name.trim().length >= 2 && nameRegex.test(name.trim());
-};
-
-const validatePassportNumber = (passport) => {
-  const passportRegex = /^[A-Z0-9]+$/;
-  return passport.trim().length >= 5 && passportRegex.test(passport.trim());
-};
-
-const validatePostalCode = (postalCode) => {
-  const postalRegex = /^[0-9]+$/;
-  return postalRegex.test(postalCode.trim()) && postalCode.trim().length >= 4;
-};
-
-const validateFutureDate = (dateString) => {
-  const selectedDate = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return selectedDate >= today;
-};
-
-const validateCherryBookingReference = (cherryRef) => {
-  const cherryRegex = /^[A-Z0-9]+$/;
-  return cherryRef.trim().length === 6 && cherryRegex.test(cherryRef.trim());
-};
-
-// Booking data for the booking history table
-const bookingHistoryData = [
-  {
-    id: 1,
-    bookingRef: "CHF321",
-    dateIssue: "Sat 14, Dec",
-    flightNumber: "EK 521 (Aircraft: 388)",
-    tripType: "One Way (Non-refundable)",
-  },
-  {
-    id: 2,
-    bookingRef: "CHF322",
-    dateIssue: "Fri 13, Dec",
-    flightNumber: "QF 491 (Aircraft: 73H)",
-    tripType: "Round Trip (Refundable)",
-  },
-  {
-    id: 3,
-    bookingRef: "CHF456",
-    dateIssue: "Sat 14, Dec",
-    flightNumber: "EK 521 (Aircraft: 388)",
-    tripType: "One Way (Non-refundable)",
-  },
-  {
-    id: 4,
-    bookingRef: "CHF321",
-    dateIssue: "Fri 13, Dec",
-    flightNumber: "QF 491 (Aircraft: 73H)",
-    tripType: "Round Trip (Refundable)",
-  },
-  {
-    id: 5,
-    bookingRef: "CHF646",
-    dateIssue: "Sat 14, Dec",
-    flightNumber: "EK 521 (Aircraft: 388)",
-    tripType: "One Way (Non-refundable)",
-  },
-];
 
 export default function ManageBooking() {
   const [selectedRow, setSelectedRow] = useState(null);
@@ -101,262 +22,15 @@ export default function ManageBooking() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPassenger, setEditingPassenger] = useState(null);
   const fileInputRef = useRef(null);
-
-  // Form state and validation
-  const [formData, setFormData] = useState({
-    newEmail: '',
-    confirmEmail: '',
-    newPhone: '',
-    confirmPhone: '',
-    cherryBookingReference: '',
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    dateOfBirth: '',
-    nationality: '',
-    passportNumber: '',
-    passportExpiry: '',
-    issuingCountry: 'Pakistan',
-    street: '',
-    apartment: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'Pakistan'
-  });
-
-  const [validationErrors, setValidationErrors] = useState({});
-  const [isFormValid, setIsFormValid] = useState(false);
-
-  // Validation functions
-  const validateField = (fieldName, value) => {
-    let error = '';
-
-    switch (fieldName) {
-      case 'newEmail':
-        if (!value.trim()) {
-          error = 'Email address is required';
-        } else if (!validateEmail(value)) {
-          error = 'Please enter a valid email address';
-        }
-        break;
-
-      case 'confirmEmail':
-        if (!value.trim()) {
-          error = 'Please confirm your email address';
-        } else if (value !== formData.newEmail) {
-          error = 'Email addresses do not match';
-        }
-        break;
-
-      case 'newPhone':
-        if (!value.trim()) {
-          error = 'Phone number is required';
-        } else if (!validatePhone(value)) {
-          error = 'Please enter a valid phone number';
-        }
-        break;
-
-      case 'confirmPhone':
-        if (!value.trim()) {
-          error = 'Please confirm your phone number';
-        } else if (value !== formData.newPhone) {
-          error = 'Phone numbers do not match';
-        }
-        break;
-
-      case 'firstName':
-        if (!value.trim()) {
-          error = 'First name is required';
-        } else if (!validateName(value)) {
-          error = 'First name must contain only letters';
-        }
-        break;
-
-      case 'lastName':
-        if (!value.trim()) {
-          error = 'Last name is required';
-        } else if (!validateName(value)) {
-          error = 'Last name must contain only letters';
-        }
-        break;
-
-      case 'middleName':
-        if (value.trim() && !validateName(value)) {
-          error = 'Middle name must contain only letters';
-        }
-        break;
-
-      case 'dateOfBirth':
-        if (!value.trim()) {
-          error = 'Date of birth is required';
-        }
-        break;
-
-      case 'nationality':
-        if (!value.trim()) {
-          error = 'Nationality is required';
-        } else if (!validateName(value)) {
-          error = 'Nationality must contain only letters';
-        }
-        break;
-
-      case 'passportNumber':
-        if (!value.trim()) {
-          error = 'Passport number is required';
-        } else if (!validatePassportNumber(value)) {
-          error = 'Passport number must be alphanumeric and at least 5 characters';
-        }
-        break;
-
-      case 'passportExpiry':
-        if (!value.trim()) {
-          error = 'Passport expiry date is required';
-        } else if (!validateFutureDate(value)) {
-          error = 'Passport expiry date must be in the future';
-        }
-        break;
-
-      case 'street':
-        if (!value.trim()) {
-          error = 'Street address is required';
-        }
-        break;
-
-      case 'city':
-        if (!value.trim()) {
-          error = 'City is required';
-        }
-        break;
-
-      case 'state':
-        if (!value.trim()) {
-          error = 'State/Province is required';
-        }
-        break;
-
-      case 'postalCode':
-        if (!value.trim()) {
-          error = 'Postal code is required';
-        } else if (!validatePostalCode(value)) {
-          error = 'Please enter a valid postal code';
-        }
-        break;
-
-      case 'cherryBookingReference':
-        if (!value.trim()) {
-          error = 'Cherry booking reference is required';
-        } else if (!validateCherryBookingReference(value)) {
-          error = 'Booking reference must be exactly 6 characters (letters and numbers)';
-        }
-        break;
-
-      default:
-        break;
-    }
-
-    return error;
-  };
-
-  const handleInputChange = (fieldName, value) => {
-    // Special handling for cherry booking reference to enforce 6-character limit
-    if (fieldName === 'cherryBookingReference') {
-      // Only allow up to 6 characters
-      const limitedValue = value.toUpperCase().slice(0, 6);
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: limitedValue
-      }));
-
-      // Real-time validation
-      const error = validateField(fieldName, limitedValue);
-      setValidationErrors(prev => ({
-        ...prev,
-        [fieldName]: error
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: value
-      }));
-
-      // Real-time validation
-      const error = validateField(fieldName, value);
-      setValidationErrors(prev => ({
-        ...prev,
-        [fieldName]: error
-      }));
-    }
-
-    // Check if form is valid after each change
-    checkFormValidity();
-  };
-
-  const checkFormValidity = () => {
-    const errors = {};
-
-    // Validate all required fields
-    Object.keys(formData).forEach(field => {
-      if (field !== 'middleName' && field !== 'apartment') {
-        const error = validateField(field, formData[field]);
-        if (error) errors[field] = error;
-      }
-    });
-
-    // For optional fields, only validate if they have values
-    if (formData.middleName) {
-      const error = validateField('middleName', formData.middleName);
-      if (error) errors.middleName = error;
-    }
-
-    setValidationErrors(errors);
-    setIsFormValid(Object.keys(errors).length === 0);
-  };
-
+  const [bookings, setBookings] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [bookingContext, setBookingContext] = useState(null);
+  const [message, setMessage] = useState("");
+  const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
   // Ticket responses keyed by booking id. When hasTicket is true the three actions are shown.
-  const [ticketResponses, setTicketResponses] = useState({
-    // Example: booking id 1 has a ticket. Real responses should be set from API.
-    1: { hasTicket: true, ticketUrl: "/mock/ticket_CHF321.pdf" },
-  });
+  const [ticketResponses, setTicketResponses] = useState({});
 
-  const sampleTripData = [
-    {
-      srNo: 1,
-      passengerName: "Muhammad Ali Abbas",
-      airlineBookingRef: "CHF321",
-      flyingFrom: "Lahore",
-      deptTime: "14:30",
-      flyingTo: "Karachi",
-      arrivalTime: "16:45",
-      baggage: "20kg",
-      class: "Economy",
-      status: "Used",
-    },
-    {
-      srNo: 2,
-      passengerName: "Sarah Ahmed Khan",
-      airlineBookingRef: "CHF322",
-      flyingFrom: "Karachi",
-      deptTime: "18:15",
-      flyingTo: "Lahore",
-      arrivalTime: "20:30",
-      baggage: "25kg",
-      class: "Business",
-      status: "Not Use",
-    },
-    {
-      srNo: 3,
-      passengerName: "Ahmed Hassan Ali",
-      airlineBookingRef: "CHF323",
-      flyingFrom: "Lahore",
-      deptTime: "09:45",
-      flyingTo: "Dubai",
-      arrivalTime: "12:00",
-      baggage: "30kg",
-      class: "Economy",
-      status: "Not Use",
-    },
-  ];
+  
 
   const handleLogoUpload = (event) => {
     const file = event.target.files[0];
@@ -377,81 +51,176 @@ export default function ManageBooking() {
   };
 
   const handleEditInfo = (passenger) => {
-    // Reset form data when opening modal
-    setFormData({
-      newEmail: '',
-      confirmEmail: '',
-      newPhone: '',
-      confirmPhone: '',
-      firstName: passenger.passengerName.split(" ")[0] || '',
-      lastName: passenger.passengerName.split(" ").slice(-1)[0] || '',
-      middleName: '',
-      dateOfBirth: '',
-      nationality: '',
-      passportNumber: '',
-      passportExpiry: '',
-      issuingCountry: 'Pakistan',
-      street: '',
-      apartment: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'Pakistan'
-    });
-
-    // Reset validation errors
-    setValidationErrors({});
-    setIsFormValid(false);
-
+    const names = (passenger.fullName || passenger.passengerName || " ").split(" ");
+    const firstName = passenger.firstName || names[0] || "";
+    const lastName = passenger.lastName || names.slice(1).join(" ") || "";
     setEditingPassenger({
       ...passenger,
-      email: "passenger@email.com",
-      phone: "+92 300 1234567",
-      street: "123 Main Street",
-      city: "Lahore",
-      state: "Punjab",
-      postalCode: "54000",
-      country: "Pakistan",
-      firstName: passenger.passengerName.split(" ")[0],
-      lastName: passenger.passengerName.split(" ").slice(-1)[0],
-      passportNumber: "AB1234567",
-      passportExpiry: "2025-12-31",
-      dateOfBirth: "1990-01-01",
-      nationality: "Pakistani",
+      firstName,
+      lastName,
+      email: passenger.email || "",
+      phone: passenger.phone || "",
+      street: passenger.address?.street || "",
+      city: passenger.address?.city || "",
+      state: passenger.address?.state || "",
+      postalCode: passenger.address?.postalCode || "",
+      country: passenger.address?.country || "",
+      passportNumber: passenger.documentNumber || "",
+      passportExpiry: passenger.documentExpiry || "",
     });
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    if (isFormValid) {
-      // Handle save logic here - only executes if form is valid
-      console.log('Form data being saved:', formData);
-      alert('Form validation passed! Data would be saved here.');
+  const handleSaveEdit = async () => {
+    try {
+      if (!editingPassenger) return;
+      const pnr = bookingContext?.bookingId || editingPassenger.airlineBookingRef || editingPassenger.airlineBookingReference;
+      const passengerId = editingPassenger.id || editingPassenger.srNo;
+
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : "";
+      };
+
+      const newEmail = getVal("newEmail");
+      const newPhone = getVal("newPhone");
+      const firstName = getVal("firstName");
+      const lastName = getVal("lastName");
+      const passportNumber = getVal("passportNumber");
+      const passportExpiry = getVal("passportExpiry");
+
+      const updates = [];
+      if (newEmail && newEmail !== (editingPassenger.email || "")) {
+        updates.push({ type: "email", data: { newEmail } });
+      }
+      if (newPhone && newPhone !== (editingPassenger.phone || "")) {
+        updates.push({ type: "phone_number", data: { newPhone } });
+      }
+      if ((passportNumber && passportNumber !== (editingPassenger.documentNumber || editingPassenger.passportNumber || "")) ||
+          (passportExpiry && passportExpiry !== (editingPassenger.documentExpiry || editingPassenger.passportExpiry || ""))) {
+        updates.push({ type: "travel_document", data: { newDocumentNumber: passportNumber, newExpiryDate: passportExpiry } });
+      }
+      if ((firstName && firstName !== (editingPassenger.firstName || "")) ||
+          (lastName && lastName !== (editingPassenger.lastName || ""))) {
+        updates.push({ type: "address", data: { firstName, lastName, newPhone: newPhone || editingPassenger.phone || "" } });
+      }
+
+      for (const u of updates) {
+        const resp = await fetch(`${BASE_URI}/api/booking/update-info`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pnr,
+            passengerId,
+            updateType: u.type,
+            updateData: u.data,
+            bookingId: bookingContext?.bookingId,
+            lastName: bookingContext?.lastName,
+          }),
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `Failed to update ${u.type}`);
+        }
+      }
+
+      setTrips((prev) => prev.map((t) => {
+        if ((t.id || t.srNo) === passengerId) {
+          return {
+            ...t,
+            email: newEmail || t.email,
+            phone: newPhone || t.phone,
+            firstName: firstName || t.firstName,
+            lastName: lastName || t.lastName,
+            documentNumber: passportNumber || t.documentNumber,
+            documentExpiry: passportExpiry || t.documentExpiry,
+            fullName: `${firstName || t.firstName || ""} ${lastName || t.lastName || ""}`.trim(),
+          };
+        }
+        return t;
+      }));
+
       setIsEditModalOpen(false);
       setEditingPassenger(null);
-      // Reset form data
-      setFormData({
-        newEmail: '',
-        confirmEmail: '',
-        newPhone: '',
-        confirmPhone: '',
-        firstName: '',
-        lastName: '',
-        middleName: '',
-        dateOfBirth: '',
-        nationality: '',
-        passportNumber: '',
-        passportExpiry: '',
-        issuingCountry: 'Pakistan',
-        street: '',
-        apartment: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'Pakistan'
-      });
+      setMessage("Information updated successfully.");
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Failed to update information");
     }
   };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const ctxStr = typeof window !== 'undefined' ? sessionStorage.getItem("manageBookingContext") : null;
+        if (!ctxStr) return;
+        const ctx = JSON.parse(ctxStr);
+        setBookingContext(ctx);
+
+        let itinerary = ctx.itinerary;
+        if (!itinerary && ctx.bookingId) {
+          const res = await fetch(`${BASE_URI}/api/tp/getItinerary?PNR=${encodeURIComponent(ctx.bookingId)}`);
+          if (res.ok) {
+            itinerary = await res.json();
+          }
+        }
+        if (!itinerary) return;
+        let itineraryDetails = itinerary.ItineraryDetails;
+        if (typeof itineraryDetails === 'string') {
+          try { itineraryDetails = JSON.parse(itineraryDetails); } catch {}
+        }
+        const reservationData = itineraryDetails?.ReservationResponse?.Reservation;
+        const travelers = reservationData?.Traveler || [];
+        const products = reservationData?.Offer?.[0]?.Product || [];
+        const flightSegments = products.map(p => p.FlightSegment?.[0]?.Flight).filter(Boolean);
+
+        const pnrValue = itinerary.PNR || ctx.bookingId;
+        const bookingRow = [{
+          id: pnrValue,
+          bookingRef: pnrValue,
+          dateIssue: reservationData?.Receipt?.[0]?.Confirmation?.Locator?.creationDate || new Date().toISOString().split('T')[0],
+          flightNumber: flightSegments.map(seg => `${seg.carrier || 'XX'}${seg.number || '000'}`).join(', '),
+          tripType: itinerary.TripType?.replace('TripType:', '').trim() || 'Unknown',
+        }];
+        setBookings(bookingRow);
+
+        const processedPassengers = travelers.map((traveler, index) => {
+          const personName = traveler.PersonName || {};
+          const telephone = traveler.Telephone?.[0];
+          const email = traveler.Email?.[0];
+          const travelDoc = traveler.TravelDocument?.[0];
+          const firstFlight = flightSegments[0];
+          const lastFlight = flightSegments[flightSegments.length - 1];
+          const firstName = personName.Given || "";
+          const lastName = personName.Surname || "";
+          return {
+            id: traveler.id || `traveler_${index + 1}`,
+            srNo: index + 1,
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`.trim(),
+            email: email?.value || "",
+            phone: telephone ? `${telephone.countryAccessCode || ""}${telephone.phoneNumber || ""}`.trim() : "",
+            airlineBookingRef: pnrValue,
+            flyingFrom: firstFlight?.Departure?.location || "N/A",
+            deptTime: firstFlight ? `${firstFlight.Departure.date}T${firstFlight.Departure.time}` : "",
+            flyingTo: lastFlight?.Arrival?.location || "N/A",
+            arrivalTime: lastFlight ? `${lastFlight.Arrival.date}T${lastFlight.Arrival.time}` : "",
+            baggage: reservationData?.Offer?.[0]?.TermsAndConditionsFull?.[0]?.BaggageAllowance?.[0]?.Text?.[0] || "Standard",
+            class: products[0]?.PassengerFlight?.[0]?.FlightProduct?.[0]?.cabin || "Economy",
+            documentNumber: travelDoc?.number || "",
+            documentExpiry: travelDoc?.expiryDate || "",
+            address: {},
+            status: "",
+          };
+        });
+        setTrips(processedPassengers);
+      } catch (e) {
+        console.error("Failed to load booking context:", e);
+      }
+    };
+    load();
+  }, []);
 
   const handleResendTicket = (bookingId) => {
     // TODO: Replace with real API call to resend ticket email
@@ -491,47 +260,21 @@ export default function ManageBooking() {
       <Header />
 
       <div className="flex flex-col lg:flex-row">
-        {/* Desktop Sidebar - hidden on small screens */}
-        <aside className="hidden lg:block w-64 lg:min-h-screen order-2 lg:order-1">
+        <aside className="w-full lg:w-64 lg:min-h-screen order-2 lg:order-1">
           <Sidebar />
         </aside>
 
-        {/* Mobile/Tablet compact tab navigation - visible only on small screens */}
-        <div className="lg:hidden w-full px-2 sm:px-4 py-3 order-1 bg-white border-b border-gray-200">
-          <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
-            {[
-              'Booking History',
-              'Split Itinerary',
-              'Add Passengers',
-              'Special Note',
-              'Customer Support',
-            ].map((item) => (
-              <button
-                key={item}
-                onClick={() => setActiveMenuItem(item)}
-                className={`whitespace-nowrap px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
-                  activeMenuItem === item
-                    ? 'bg-[#FF6B35] text-white shadow-md'
-                    : 'bg-white text-[#153E7E] border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Main Content */}
-        <div className="flex-1 p-2 sm:p-3 md:p-4 lg:p-6 order-2 lg:order-2 mt-2 sm:mt-4 lg:mt-0">
+        <div className="flex-1 p-3 sm:p-4 lg:p-6 order-1 lg:order-2">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-[26px] font-semibold text-[#FF6B35] mb-3 sm:mb-4 lg:mb-6 tracking-wide uppercase">
+            <h1 className="text-xl sm:text-2xl lg:text-[26px] font-semibold text-[#FF6B35] mb-4 lg:mb-6 tracking-wide uppercase">
               {activeMenuItem}
             </h1>
 
             {/* Booking History Card */}
-            <Card className="mb-3 sm:mb-4 lg:mb-6 border border-gray-200 shadow-md w-full max-w-full mx-auto rounded-xl overflow-hidden">
-              <CardHeader className="bg-white border-b border-gray-200 py-2 sm:py-3 px-2 sm:px-4 flex justify-center">
-                <CardTitle className="text-base sm:text-lg md:text-xl lg:text-[20px] font-bold text-[#2E4A6B] tracking-wide relative inline-block">
+            <Card className="mb-4 lg:mb-6 border border-gray-200 shadow-md w-full max-w-full mx-auto rounded-xl overflow-hidden">
+              <CardHeader className="bg-white border-b border-gray-200 py-3 px-4 flex justify-center">
+                <CardTitle className="text-lg sm:text-xl lg:text-[20px] font-bold text-[#2E4A6B] tracking-wide relative inline-block">
                   <span className="relative inline-block">
                     Booking History
                     <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
@@ -541,27 +284,27 @@ export default function ManageBooking() {
 
               <CardContent className="p-0">
                 <div className="overflow-x-auto bg-white">
-                  <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] min-w-[600px]">
-                    <thead className="bg-[#002b5c] text-white text-xs sm:text-sm md:text-[15px] font-medium uppercase">
+                  <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B]">
+                    <thead className="bg-[#002b5c] text-white text-[15px] font-medium uppercase">
                       <tr>
-                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
-                          Booking #
+                        <th className="text-left py-3 px-5 border-b border-gray-200">
+                          Cherry Flight Booking #
                         </th>
-                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
-                          Date
+                        <th className="text-left py-3 px-5 border-b border-gray-200">
+                          Date (Issue)
                         </th>
-                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
-                          Flight Details
+                        <th className="text-left py-3 px-5 border-b border-gray-200">
+                          Customer Name
                         </th>
-                        <th className="text-left py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200">
+                        <th className="text-left py-3 px-5 border-b border-gray-200">
                           Trip Type
                         </th>
-                        <th className="text-center py-2 px-2 sm:py-3 sm:px-3 md:px-5 border-b border-gray-200 w-12 sm:w-16"></th>
+                        <th className="text-center py-3 px-5 border-b border-gray-200 w-16"></th>
                       </tr>
                     </thead>
 
-                    <tbody className="text-sm sm:text-[15px] font-normal">
-                      {bookingHistoryData.map(
+                    <tbody className="text-[15px] font-normal">
+                      {bookings.map(
                         (booking, index) => (
                           <>
                             <tr
@@ -575,16 +318,16 @@ export default function ManageBooking() {
                                   : "bg-[#F9FBFF]"
                               } ${selectedPlanRow === booking.id ? "bg-[#E8F4FD]" : ""}`}
                             >
-                              <td className="py-2 px-3 sm:py-3 sm:px-5">
+                              <td className="py-3 px-5">
                                 {booking.bookingRef}
                               </td>
-                              <td className="py-2 px-3 sm:py-3 sm:px-5">
+                              <td className="py-3 px-5">
                                 {booking.dateIssue}
                               </td>
-                              <td className="py-2 px-3 sm:py-3 sm:px-5">
+                              <td className="py-3 px-5">
                                 {booking.flightNumber}
                               </td>
-                              <td className="py-2 px-3 sm:py-3 sm:px-5">
+                              <td className="py-3 px-5">
                                 {booking.tripType}
                               </td>
                               <td className="py-3 px-5 text-center">
@@ -602,49 +345,50 @@ export default function ManageBooking() {
                                   <div className="bg-[#f8f9fa] p-6 border-t-2 border-[#002b5c]">
                                     {/* Selected Plan Subtable */}
                                     <div className="mb-4">
-                                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-4 text-center">
+                                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-4 text-center">
                                         Selected Plan
                                       </h3>
                                     </div>
 
                                     <div className="overflow-x-auto bg-white rounded-lg shadow">
-                                      <table className="w-full border border-gray-200 text-[#2E4A6B] min-w-[800px]">
-                                        <thead className="bg-[#002b5c] text-white text-xs sm:text-sm md:text-[14px] font-medium uppercase">
+                                      <table className="w-full border border-gray-200 text-[#2E4A6B]">
+                                        <thead className="bg-[#002b5c] text-white text-[14px] font-medium uppercase">
                                           <tr>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              #
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Sr No.
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              Passenger
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Passenger Name
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              Booking Ref
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Airline Booking
+                                              Reference
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              From
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Flying From
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              Dept
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Dept. Time
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              To
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Flying To
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
-                                              Arrival
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
+                                              Arrival Time
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
                                               Baggage
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
                                               Class
                                             </th>
-                                            <th className="text-left py-2 px-1 sm:py-3 sm:px-2 md:px-4 border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 border-b border-gray-200">
                                               Actions
                                             </th>
                                           </tr>
                                         </thead>
-                                        <tbody className="text-xs sm:text-sm md:text-[14px] font-normal">
-                                          {sampleTripData.map(
+                                        <tbody className="text-[14px] font-normal">
+                                          {trips.map(
                                             (
                                               trip,
                                               tripIndex,
@@ -659,46 +403,46 @@ export default function ManageBooking() {
                                                     : "bg-[#F9FBFF]"
                                                 }`}
                                               >
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {trip.srNo}
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.passengerName
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.airlineBookingRef
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.flyingFrom
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.deptTime
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.flyingTo
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {
                                                     trip.arrivalTime
                                                   }
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {trip.baggage}
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   {trip.class}
                                                 </td>
-                                                <td className="py-2 px-1 sm:py-3 sm:px-2 md:px-4">
+                                                <td className="py-3 px-4">
                                                   <Button
                                                     size="sm"
                                                     onClick={() =>
@@ -706,7 +450,7 @@ export default function ManageBooking() {
                                                         trip,
                                                       )
                                                     }
-                                                    className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm"
+                                                    className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-3 py-1.5"
                                                   >
                                                     Edit Info
                                                   </Button>
@@ -721,33 +465,33 @@ export default function ManageBooking() {
                                     {/* View Ticket Actions: show when a valid ticket response exists for this booking */}
                                     <div className="mt-6 flex justify-center">
                                       {ticketResponses[booking.id] && ticketResponses[booking.id].hasTicket ? (
-                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
+                                        <div className="flex flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
                                           <Button
                                             onClick={() => handleResendTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
                                           >
-                                            <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
-                                            <span className="text-xs sm:text-sm">Resend Ticket Email</span>
+                                            <Mail className="w-4 h-4" />
+                                            <span className="text-sm">Resend Ticket Email</span>
                                           </Button>
 
                                           <Button
                                             onClick={() => handleViewTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
                                           >
-                                            <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
-                                            <span className="text-xs sm:text-sm">View Ticket</span>
+                                            <Eye className="w-4 h-4" />
+                                            <span className="text-sm">View Ticket</span>
                                           </Button>
 
                                           <Button
                                             onClick={() => handlePrintTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
                                           >
-                                            <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
-                                            <span className="text-xs sm:text-sm">Print</span>
+                                            <Printer className="w-4 h-4" />
+                                            <span className="text-sm">Print</span>
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div className="text-center text-xs sm:text-sm text-gray-600 w-full sm:w-auto">
+                                        <div className="text-center text-sm text-gray-600 w-full sm:w-auto">
                                           No Ticket Available
                                         </div>
                                       )}
@@ -767,33 +511,33 @@ export default function ManageBooking() {
             </Card>
 
             {/* Actions for selected booking: centered row with three buttons */}
-            <div className="mt-4 sm:mt-6 flex justify-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 w-full max-w-md px-2 sm:px-4">
+            <div className="mt-6 flex justify-center">
+              <div className="flex flex-row items-center justify-center gap-3 w-full max-w-md px-4">
                 <Button
                   onClick={() => handleResendTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md"
                 >
-                  <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Resend Ticket Email</span>
+                  <Mail className="w-4 h-4" />
+                  <span className="text-sm">Resend Ticket Email</span>
                 </Button>
 
                 <Button
                   onClick={() => handleViewTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md"
                 >
-                  <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">View Ticket</span>
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm">View Ticket</span>
                 </Button>
 
                 <Button
                   onClick={() => handlePrintTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm w-full sm:w-auto"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md"
                 >
-                  <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Print</span>
+                  <Printer className="w-4 h-4" />
+                  <span className="text-sm">Print</span>
                 </Button>
               </div>
             </div>
@@ -813,17 +557,15 @@ export default function ManageBooking() {
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
       >
-        {/* <DialogContent className="max-w-[720px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-xl shadow-xl p-0 overflow-hidden flex flex-col mx-auto"> */}
+        <DialogContent className="max-w-[1100px] w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[95vh] bg-gradient-to-br from-white to-gray-50 border-none rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col">
           {/* Modern Header */}
-          <DialogContent className="max-w-[640px] w-[92vw] sm:w-[640px] bg-white border border-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col mx-auto my-auto max-h-[72vh]">
-
           <div className="bg-gradient-to-r from-[#002b5c] to-[#003d7a] px-8 py-6 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-lg sm:text-xl lg:text-[24px] font-bold text-white mb-1">
+                <DialogTitle className="text-[24px] font-bold text-white mb-1">
                   Edit Passenger Information
                 </DialogTitle>
-                <p className="text-blue-200 text-xs sm:text-sm lg:text-[14px]">
+                <p className="text-blue-200 text-[14px]">
                   {editingPassenger?.passengerName}
                 </p>
               </div>
@@ -838,7 +580,7 @@ export default function ManageBooking() {
 
           {editingPassenger && (
             <div className="overflow-y-auto flex-1">
-              <div className="p-6 sm:p-8">
+              <div className="p-8">
                 {/* Beautiful Tabs */}
                 <Tabs defaultValue="email" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-gray-100 p-1 rounded-xl mb-6 sm:mb-8">
@@ -878,8 +620,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
+                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-[#FF6B35]" />
                         Email Information
                       </h3>
 
@@ -913,20 +655,8 @@ export default function ManageBooking() {
                             id="newEmail"
                             type="email"
                             placeholder="Enter new email address"
-                            value={formData.newEmail}
-                            onChange={(e) => handleInputChange('newEmail', e.target.value)}
-                            className={`rounded-lg h-12 ${
-                              validationErrors.newEmail
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                            }`}
+                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                           />
-                          {validationErrors.newEmail && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.newEmail}
-                            </div>
-                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -940,20 +670,8 @@ export default function ManageBooking() {
                             id="confirmEmail"
                             type="email"
                             placeholder="Re-enter new email address"
-                            value={formData.confirmEmail}
-                            onChange={(e) => handleInputChange('confirmEmail', e.target.value)}
-                            className={`rounded-lg h-12 ${
-                              validationErrors.confirmEmail
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                            }`}
+                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                           />
-                          {validationErrors.confirmEmail && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.confirmEmail}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -965,8 +683,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
+                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <Phone className="w-5 h-5 text-[#FF6B35]" />
                         Phone Number Information
                       </h3>
 
@@ -1000,20 +718,8 @@ export default function ManageBooking() {
                             id="newPhone"
                             type="tel"
                             placeholder="Enter new phone number"
-                            value={formData.newPhone}
-                            onChange={(e) => handleInputChange('newPhone', e.target.value)}
-                            className={`rounded-lg h-12 ${
-                              validationErrors.newPhone
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                            }`}
+                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                           />
-                          {validationErrors.newPhone && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.newPhone}
-                            </div>
-                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -1027,20 +733,8 @@ export default function ManageBooking() {
                             id="confirmPhone"
                             type="tel"
                             placeholder="Re-enter new phone number"
-                            value={formData.confirmPhone}
-                            onChange={(e) => handleInputChange('confirmPhone', e.target.value)}
-                            className={`rounded-lg h-12 ${
-                              validationErrors.confirmPhone
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                            }`}
+                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                           />
-                          {validationErrors.confirmPhone && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.confirmPhone}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1052,44 +746,12 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
+                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-[#FF6B35]" />
                         Travel Document Information
                       </h3>
 
                       <div className="space-y-5">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="cherryBookingReference"
-                            className="text-[#002b5c] font-medium"
-                          >
-                            Cherry Booking Reference Number
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id="cherryBookingReference"
-                              placeholder="Enter 6-character booking reference"
-                              value={formData.cherryBookingReference}
-                              onChange={(e) => handleInputChange('cherryBookingReference', e.target.value.toUpperCase())}
-                              maxLength={6}
-                              className={`rounded-lg h-12 pr-16 ${
-                                validationErrors.cherryBookingReference
-                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                              }`}
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">
-                              {formData.cherryBookingReference.length}/6
-                            </div>
-                          </div>
-                          {validationErrors.cherryBookingReference && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.cherryBookingReference}
-                            </div>
-                          )}
-                        </div>
-
                         <div className="grid grid-cols-2 gap-5">
                           <div className="space-y-2">
                             <Label
@@ -1100,20 +762,11 @@ export default function ManageBooking() {
                             </Label>
                             <Input
                               id="firstName"
-                              value={formData.firstName}
-                              onChange={(e) => handleInputChange('firstName', e.target.value)}
-                              className={`rounded-lg h-12 ${
-                                validationErrors.firstName
-                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                              }`}
+                              defaultValue={
+                                editingPassenger.firstName
+                              }
+                              className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                             />
-                            {validationErrors.firstName && (
-                              <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                                <AlertCircle className="w-4 h-4" />
-                                {validationErrors.firstName}
-                              </div>
-                            )}
                           </div>
 
                           <div className="space-y-2">
@@ -1125,20 +778,11 @@ export default function ManageBooking() {
                             </Label>
                             <Input
                               id="lastName"
-                              value={formData.lastName}
-                              onChange={(e) => handleInputChange('lastName', e.target.value)}
-                              className={`rounded-lg h-12 ${
-                                validationErrors.lastName
-                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                  : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                              }`}
+                              defaultValue={
+                                editingPassenger.lastName
+                              }
+                              className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                             />
-                            {validationErrors.lastName && (
-                              <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                                <AlertCircle className="w-4 h-4" />
-                                {validationErrors.lastName}
-                              </div>
-                            )}
                           </div>
                         </div>
 
@@ -1155,20 +799,8 @@ export default function ManageBooking() {
                           <Input
                             id="middleName"
                             placeholder="Enter middle name"
-                            value={formData.middleName}
-                            onChange={(e) => handleInputChange('middleName', e.target.value)}
-                            className={`rounded-lg h-12 ${
-                              validationErrors.middleName
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20'
-                            }`}
+                            className="border-gray-300 focus:border-[#002b5c] focus:ring-2 focus:ring-[#002b5c]/20 rounded-lg h-12"
                           />
-                          {validationErrors.middleName && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              {validationErrors.middleName}
-                            </div>
-                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-5">
@@ -1281,8 +913,8 @@ export default function ManageBooking() {
                     className="space-y-6 mt-6"
                   >
                     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                      <h3 className="text-base sm:text-lg lg:text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
-                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6B35]" />
+                      <h3 className="text-[18px] font-semibold text-[#002b5c] mb-6 flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-[#FF6B35]" />
                         Address Information
                       </h3>
 
@@ -1422,22 +1054,17 @@ export default function ManageBooking() {
           )}
 
           {/* Modern Footer with Action Buttons */}
-          <div className="border-t border-gray-200 bg-white px-4 sm:px-8 py-3 sm:py-5 flex justify-end gap-3 sm:gap-4 flex-shrink-0">
+          <div className="border-t border-gray-200 bg-white px-8 py-5 flex justify-end gap-4 flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => setIsEditModalOpen(false)}
-              className="px-4 sm:px-8 py-2 sm:py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-10 sm:h-12 text-sm sm:text-base"
+              className="px-8 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-all h-12"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveEdit}
-              disabled={!isFormValid}
-              className={`px-4 sm:px-8 py-2 sm:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-10 sm:h-12 text-sm sm:text-base ${
-                isFormValid
-                  ? 'bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className="px-8 py-3 bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12"
             >
               Save Changes
             </Button>
