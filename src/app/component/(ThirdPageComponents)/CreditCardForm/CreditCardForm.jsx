@@ -56,6 +56,11 @@ const CreditCardForm = ({
     if (embedRef.current) {
       embedRef.current.innerHTML = "";
     }
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("paymentSessionId");
+      } catch {}
+    }
   }, [currentStep]);
 
   // useEffect(() => {
@@ -465,6 +470,11 @@ const makeReservationCall = async () => {
     }
 
     setSessionId(resolvedSessionId);
+    try {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("paymentSessionId", resolvedSessionId);
+      }
+    } catch {}
     console.log("Session ID set:", resolvedSessionId);
   } catch (error) {
     console.error("Error fetching reservation:", error.message, error);
@@ -514,6 +524,11 @@ const makeReservationCall = async () => {
       setSessionId(null);
       configured.current = false;
       if (embedRef.current) embedRef.current.innerHTML = "";
+      try {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("paymentSessionId");
+        }
+      } catch {}
     };
     window.cancelCallback = () => {
       console.log("Payment cancelled");
@@ -522,6 +537,11 @@ const makeReservationCall = async () => {
       setSessionId(null);
       configured.current = false;
       if (embedRef.current) embedRef.current.innerHTML = "";
+      try {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("paymentSessionId");
+        }
+      } catch {}
     };
     window.completeCallback = (response) => {
       console.log("Payment complete:", response);

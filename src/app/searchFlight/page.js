@@ -131,12 +131,12 @@ const Page = () => {
       setIsMultiCity(
         userData && userData.search_flightType == "3" ? true : false
       );
-      setEconomy(userData && userData.search_Class == "Y" ? true : false);
+      setEconomy(userData && userData.search_Class == "Economy" ? true : false);
       setPremiumEconomy(
-        userData && userData.search_Class == "P" ? true : false
+        userData && userData.search_Class == "PremiumEconomy" ? true : false
       );
-      setFirst(userData && userData.search_Class == "F" ? true : false);
-      setBusiness(userData && userData.search_Class == "C" ? true : false);
+      setFirst(userData && userData.search_Class == "First" ? true : false);
+      setBusiness(userData && userData.search_Class == "Business" ? true : false);
       setIsNoPreference(userData && userData.search_Class == "" ? true : false);
       setAdults((userData && Number(userData.search_Adults)) || 1);
       setChildren((userData && Number(userData.search_Children)) || 0);
@@ -351,13 +351,13 @@ const Page = () => {
       search_Infants: infants.toString(),
       search_Token: cookies.tokenId,
       search_Class: economy
-        ? "Y"
+        ? "Economy"
         : premiumEconomy
-        ? "P"
+        ? "PremiumEconomy"
         : business
-        ? "C"
+        ? "Business"
         : first
-        ? "F"
+        ? "First"
         : isNoPreference
         ? ""
         : "",
@@ -718,40 +718,91 @@ const Page = () => {
   };
 
   useEffect(() => {
-    const applyFilters = (data, filters) => {
+    const selectedCabin = (userData2?.search_Class ?? "").trim();
+    const norm = (s) => (s ?? "").toString().toLowerCase().replace(/[^a-z]/g, "");
+    const matchesCabin = (brand, want) => {
+      const a = norm(brand?.cabin);
+      const b = norm(brand?.cabinGrade);
+      const w = norm(want);
+      const initialMatch = (code) => code && code.length === 1 && code[0] === w[0];
+      return (
+        a === w ||
+        b === w ||
+        a.includes(w) ||
+        b.includes(w) ||
+        initialMatch(a) ||
+        initialMatch(b)
+      );
+    };
+
+    const preFilterByClass = (data) => {
+      if (!Array.isArray(data)) return [];
+      if (!selectedCabin) return data; // no class selected => no pre-filter
       return data.filter((item) => {
+        const brands = item?.brands || [];
+        return brands.some((b) => matchesCabin(b, selectedCabin));
+      });
+    };
+
+    const applyFilters = (data, filters) => {
+      const safeHour = (t) => {
+        if (!t || typeof t !== "string") return null;
+        const h = parseInt(String(t).split(":")[0], 10);
+        return isNaN(h) ? null : h;
+      };
+      const getAirlineCode = (it) =>
+        it?.airlineCode || it?.marketingCarrier || it?.actualCarrier || "";
+      const getDepAirport = (it) => it?.depAirportCode || it?.depAirport || "";
+
+      return (Array.isArray(data) ? data : []).filter((item) => {
         let matchesAirline = true;
         let matchesStops = true;
         let matchesDepAirport = true;
         let matchesArrTime = true;
         let matchesDepTime = true;
 
+        // Airline codes
         if (filters.airlineCodes.length > 0) {
-          matchesAirline = filters.airlineCodes.includes(item.airlineCode);
-        }
-
-        if (filters.stops.length > 0) {
-          const itemStops =
-            typeof item.stops === "string"
-              ? parseInt(item.stops, 10)
-              : item.stops;
-          matchesStops = filters.stops.some((stop) => stop === itemStops);
-        }
-
-        if (filters.depAirportCodes.length > 0) {
-          matchesDepAirport = filters.depAirportCodes.includes(
-            item.depAirportCode
+          const code = String(getAirlineCode(item)).toUpperCase();
+          matchesAirline = filters.airlineCodes.some(
+            (c) => String(c).toUpperCase() === code
           );
         }
+
+        // Stops: 0 Nonstop, 1 One stop, 2 MultiStop (>=2)
+        if (filters.stops.length > 0) {
+          const itemStopsRaw = item?.stops;
+          const itemStops =
+            typeof itemStopsRaw === "string"
+              ? parseInt(itemStopsRaw, 10)
+              : Number(itemStopsRaw);
+          matchesStops = filters.stops.some((s) =>
+            s === 2 ? itemStops >= 2 : itemStops === s
+          );
+        }
+
+        // Departure airport
+        if (filters.depAirportCodes.length > 0) {
+          const dep = String(getDepAirport(item)).toUpperCase();
+          matchesDepAirport = filters.depAirportCodes.some(
+            (c) => String(c).toUpperCase() === dep
+          );
+        }
+
+        // Arrival time range
         if (filters.arrivalTimeRange) {
           const [start, end] = filters.arrivalTimeRange;
-          const arrivalHour = parseInt(item.arrTime.split(":")[0], 10);
-          matchesArrTime = arrivalHour >= start && arrivalHour <= end;
+          const arrivalHour = safeHour(item?.arrTime);
+          matchesArrTime =
+            arrivalHour === null ? true : arrivalHour >= start && arrivalHour <= end;
         }
+
+        // Departure time range
         if (filters.departureTimeRange) {
           const [start, end] = filters.departureTimeRange;
-          const departureHour = parseInt(item.depTime.split(":")[0], 10);
-          matchesDepTime = departureHour >= start && departureHour <= end;
+          const departureHour = safeHour(item?.depTime);
+          matchesDepTime =
+            departureHour === null ? true : departureHour >= start && departureHour <= end;
         }
 
         return (
@@ -790,19 +841,38 @@ const Page = () => {
       }
     });
 
-    const filtered =
+    // Base data for this leg
+    const baseData =
       legsCount === 1
-        ? dataJson && applyFilters(dataJson.flightSummary, filters)
-        : dataJsonForSecondLeg &&
-          applyFilters(dataJsonForSecondLeg.flightSummary, filters);
+        ? (dataJson && Array.isArray(dataJson.flightSummary) ? dataJson.flightSummary : [])
+        : (dataJsonForSecondLeg && Array.isArray(dataJsonForSecondLeg.flightSummary) ? dataJsonForSecondLeg.flightSummary : []);
 
-    setFilteredOptions(filtered);
-    
+    // Pre-filter by selected class (cabin)
+    const classFiltered = preFilterByClass(baseData);
+
+    // Apply UI filters afterwards
+    const filtered = applyFilters(classFiltered, filters);
+
+    if (filtered && filtered.length > 0) {
+      setFilteredOptions(filtered);
+    } else {
+      // show a friendly message when no flights match the selected class
+      const msgText = selectedCabin
+        ? `No seats available in your selected class (${selectedCabin}).<br>Please change your class selection.`
+        : `No flights match your filters.<br>Please adjust your filters and try again.`;
+      setFilteredOptions([
+        {
+          keyData: "MESSAGE",
+          msg: msgText,
+        },
+      ]);
+    }
+
     // Clear any previously expanded (but not selected) flight data when filters are applied
     if (userFilters.length > 0) {
       clearExpandedFlightData();
     }
-  }, [userFilters, oneWayApi, secondLegApi, legsCount]);
+  }, [userFilters, oneWayApi, secondLegApi, legsCount, userData2?.search_Class]);
 
   useEffect(() => {
     setFlightsReview((prevData) => ({
@@ -1513,7 +1583,18 @@ const Page = () => {
                               FlightType={dataItem.flightType}
                               FlightCriteria={dataItem.flightSegment}
                               cardkey={index}
-                              brandsDataJson={dataItem.brands}
+                                      brandsDataJson={(function(){
+                                const want=(userData2?.search_Class||"").trim();
+                                if(!want) return dataItem.brands;
+                                const n=(s)=> (s||"").toString().toLowerCase().replace(/[^a-z]/g,"");
+                                const w=n(want);
+                                const filtered=(dataItem.brands||[]).filter(b=> {
+                                  const a=n(b?.cabin);
+                                  const g=n(b?.cabinGrade);
+                                  return a===w || g===w || a.includes(w) || g.includes(w);
+                                });
+                                return filtered.length>0?filtered:dataItem.brands;
+                              })()}
                               airlineLogo={dataItem.actualCarrier}
                               airlineName={dataItem.actualCarrierName}
                               airlineCode={dataItem.airlineCode}
@@ -1529,22 +1610,23 @@ const Page = () => {
                               meal={dataItem.meal}
                               // Pass base numeric totals (unformatted). Conversion to selected currency
                               // will be handled by child components using `exchangeRate`.
-                              totalPriceBase={
-                                dataItem?.brands &&
-                                dataItem?.brands[0]?.keyData === "Root0"
-                                  ? Math.ceil(
-                                      Number(
-                                        dataItem?.priceStructure?.totalPriceFC
-                                      )
-                                    )
-                                  : Math.ceil(
-                                      Number(
-                                        dataItem?.brands &&
-                                          dataItem?.brands[0]?.priceStructure
-                                            ?.totalPriceFC
-                                      )
-                                    )
-                              }
+                              totalPriceBase={(function(){
+                                const want=(userData2?.search_Class||"").trim();
+                                const n=(s)=> (s||"").toString().toLowerCase().replace(/[^a-z]/g,"");
+                                const w=n(want);
+                                const brands = want
+                                  ? (dataItem?.brands||[]).filter(b=> {
+                                      const a=n(b?.cabin); const g=n(b?.cabinGrade);
+                                      return a===w || g===w || a.includes(w) || g.includes(w);
+                                    })
+                                  : (dataItem?.brands||[]);
+                                const b0 = brands[0];
+                                if (b0 && b0.keyData !== "Root0") {
+                                  return Math.ceil(Number(b0?.priceStructure?.totalPriceFC||0));
+                                }
+                                // Root0 or no brands => fall back to card-level priceStructure
+                                return Math.ceil(Number(dataItem?.priceStructure?.totalPriceFC||0));
+                              })()}
                               exchangeRate={exchangeRate}
                             />
                           )}
@@ -1607,7 +1689,17 @@ const Page = () => {
                             FlightType={dataItem.flightType}
                             FlightCriteria={dataItem.flightSegment}
                             cardkey={index}
-                            brandsDataJson={dataItem.brands}
+                            brandsDataJson={(function(){
+                              const want=(userData2?.search_Class||"").trim();
+                              if(!want) return dataItem.brands;
+                              const n=(s)=> (s||"").toString().toLowerCase().replace(/[^a-z]/g,"");
+                              const w=n(want);
+                              const filtered=(dataItem.brands||[]).filter(b=> {
+                                const a=n(b?.cabin); const g=n(b?.cabinGrade);
+                                return a===w || g===w || a.includes(w) || g.includes(w);
+                              });
+                              return filtered.length>0?filtered:dataItem.brands;
+                            })()}
                             airlineLogo={dataItem.actualCarrier}
                             airlineName={dataItem.actualCarrierName}
                             airlineCode={dataItem.airlineCode}
@@ -1621,22 +1713,22 @@ const Page = () => {
                             arrAirportCode={dataItem.arrAirportCode}
                             stops={dataItem.stops}
                             meal={dataItem.meal}
-                            totalPriceBase={
-                              dataItem?.brands &&
-                              dataItem?.brands[0]?.keyData === "Root0"
-                                ? Math.ceil(
-                                    Number(
-                                      dataItem?.priceStructure?.totalPriceFC
-                                    ) - usersSelectedPrice
-                                  )
-                                : Math.ceil(
-                                    Number(
-                                      dataItem?.brands &&
-                                        dataItem?.brands[0]?.priceStructure
-                                          ?.totalPriceFC
-                                    ) - usersSelectedPrice
-                                  )
-                            }
+                            totalPriceBase={(function(){
+                              const want=(userData2?.search_Class||"").trim();
+                              const n=(s)=> (s||"").toString().toLowerCase().replace(/[^a-z]/g,"");
+                              const w=n(want);
+                              const brands = want
+                                ? (dataItem?.brands||[]).filter(b=> {
+                                    const a=n(b?.cabin); const g=n(b?.cabinGrade);
+                                    return a===w || g===w || a.includes(w) || g.includes(w);
+                                  })
+                                : (dataItem?.brands||[]);
+                              const b0 = brands[0];
+                              if (b0 && b0.keyData !== "Root0") {
+                                return Math.ceil(Number(b0?.priceStructure?.totalPriceFC||0) - usersSelectedPrice);
+                              }
+                              return Math.ceil(Number(dataItem?.priceStructure?.totalPriceFC||0) - usersSelectedPrice);
+                            })()}
                             exchangeRate={exchangeRate}
                           />
                         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ export default function BookingDetailsPage() {
   const [activeMenuItem, setActiveMenuItem] = useState("Change your Plan");
   const [logoUrl, setLogoUrl] = useState("/img/logo.png");
   const fileInputRef = useRef(null);
+  const detailsRef = useRef(null);
 
   // State for enhanced functionality
   const [bookingContext, setBookingContext] = useState(null);
@@ -29,6 +31,8 @@ export default function BookingDetailsPage() {
   const [passengerData, setPassengerData] = useState([]);
   const [bookingData, setBookingData] = useState(null);
   const [pdfData, setPdfData] = useState(null);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [ticketUrl, setTicketUrl] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
   const [pnrInput, setPnrInput] = useState("");
   const [priceStructure, setPriceStructure] = useState(null);
@@ -240,31 +244,48 @@ const fetchItineraryData = async (pnr) => {
 
   // Handle view generated ticket
   const handleViewTicket = async () => {
-    if (!pdfData) {
-      setMessage({ type: "error", text: "No ticket PDF available" });
-      return;
-    }
-
     try {
-      const pdfBlob = new Blob([Uint8Array.from(atob(pdfData), c => c.charCodeAt(0))], {
-        type: 'application/pdf'
-      });
-
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const ticketWindow = window.open(pdfUrl, '_blank');
-
-      if (!ticketWindow) {
-        setMessage({ type: "error", text: "Please allow popups to view the ticket" });
+      const pnr = bookingContext?.bookingId || itineraryData?.pnr || bookingData?.bookingReference;
+      if (!pnr) {
+        setMessage({ type: "error", text: "PNR not found" });
         return;
       }
-
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfUrl);
-      }, 10000);
-
+      let base64 = pdfData;
+      if (!base64) {
+        const resp = await fetch(`${BASE_URI}/api/tp/getTicketDocument?pnr=${encodeURIComponent(pnr)}`);
+        if (!resp.ok) {
+          const t = await resp.text();
+          setMessage({ type: "error", text: t || "Unable to fetch ticket PDF" });
+          return;
+        }
+        base64 = await resp.text();
+        setPdfData(base64);
+      }
+      const blob = new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setTicketUrl(url);
+      setTicketModalOpen(true);
     } catch (error) {
-      console.error("Error opening PDF:", error);
+      console.error("Error opening ticket:", error);
       setMessage({ type: "error", text: "Error opening ticket PDF" });
+    }
+  };
+
+  const handlePrint = () => {
+    try {
+      const node = detailsRef.current;
+      if (!node) return window.print();
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return window.print();
+      printWindow.document.write(`<html><head><title>Print</title><link rel="stylesheet" href="/styles/globals.css" /></head><body>${node.innerHTML}</body></html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 200);
+    } catch (e) {
+      window.print();
     }
   };
 
@@ -535,7 +556,7 @@ const fetchItineraryData = async (pnr) => {
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col items-center">
+        <div className="flex-1 flex flex-col items-center" ref={detailsRef}>
           <div className="max-w-6xl w-full px-6 py-10">
 
             {/* Message Display */}
@@ -664,7 +685,7 @@ const fetchItineraryData = async (pnr) => {
                               <td className="py-2 px-3">
                                 <div className="relative">
                                   <Button
-                                    onClick={() => setShowEditDropdown(showEditDropdown === passenger.id ? false : passenger.id)}
+                                    onClick={() => handleEditInfo("Email", passenger)}
                                     className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-4 py-2 text-sm font-medium flex items-center gap-2"
                                   >
                                     Edit Info
@@ -751,17 +772,13 @@ const fetchItineraryData = async (pnr) => {
                     </Button>
                     <Button
                       onClick={handleViewTicket}
-                      disabled={loading || !pdfData}
-                      className={`px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2 ${
-                        pdfData
-                          ? "bg-[#153E7E] hover:bg-[#0F2F5A] text-white"
-                          : "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      }`}
+                      disabled={loading}
+                      className="px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2 bg-[#153E7E] hover:bg-[#0F2F5A] text-white"
                     >
                       <Eye className="w-4 h-4" />
-                      {loading ? "Loading..." : pdfData ? "View Generated Ticket" : "No Ticket Available"}
+                      {loading ? "Loading..." : "View Ticket"}
                     </Button>
-                    <Button className="bg-[#28a745] hover:bg-[#218838] text-white px-8 py-3 rounded-md font-medium text-sm">
+                    <Button onClick={handlePrint} className="bg-[#28a745] hover:bg-[#218838] text-white px-8 py-3 rounded-md font-medium text-sm">
                       Print
                     </Button>
                   </div>
@@ -790,11 +807,11 @@ const fetchItineraryData = async (pnr) => {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-6 py-4 rounded-t-xl">
+      {/* Edit Modal (Portal) */}
+      {editModalOpen && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[800px] mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-5 py-3 rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
                   <div className={`p-2 rounded-full ${
@@ -1126,7 +1143,7 @@ const fetchItineraryData = async (pnr) => {
               </div>
             )}
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-6 px-6 pb-6">
               <Button
                 onClick={handleSaveEdit}
                 disabled={loading}
@@ -1152,6 +1169,63 @@ const fetchItineraryData = async (pnr) => {
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-medium text-sm flex-1"
               >
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </div>,
+        typeof window !== 'undefined' ? document.body : null
+      )}
+
+      {/* Ticket Modal */}
+      {ticketModalOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100000] p-4">
+          <div className="bg-white w-full max-w-5xl h-[85vh] rounded-lg overflow-hidden shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-lg font-semibold">Ticket</h3>
+              <button
+                onClick={() => {
+                  setTicketModalOpen(false);
+                  if (ticketUrl) {
+                    URL.revokeObjectURL(ticketUrl);
+                    setTicketUrl("");
+                  }
+                }}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 bg-gray-50">
+              {ticketUrl ? (
+                <iframe title="Ticket PDF" src={ticketUrl} className="w-full h-full" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-600">Loading ticket...</div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t flex justify-end gap-3">
+              <Button
+                onClick={() => {
+                  const iframe = document.querySelector('iframe[title="Ticket PDF"]');
+                  if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                  }
+                }}
+                className="bg-[#28a745] hover:bg-[#218838] text-white"
+              >
+                Print Ticket
+              </Button>
+              <Button
+                onClick={() => {
+                  setTicketModalOpen(false);
+                  if (ticketUrl) {
+                    URL.revokeObjectURL(ticketUrl);
+                    setTicketUrl("");
+                  }
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white"
+              >
+                Close
               </Button>
             </div>
           </div>

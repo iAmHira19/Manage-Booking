@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Form, Select, Steps, Tooltip } from "antd";
 import { useEffect } from "react";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -38,6 +38,7 @@ import {
 import { convertMinutesToHours } from "@/utils/convertMinutesToHours";
 import { useTravelersID } from "@/utils/getTravelersId";
 import { useGetTicket } from "@/utils/getTicket";
+import { cancelPaymentSession } from "@/utils/cancelPaymentSession";
 import { useSignInContext } from "@/providers/SignInStateProvider";
 import { getCountries } from "@/utils/getCountries";
 import { getCity } from "@/utils/getCity";
@@ -68,6 +69,7 @@ const Page = () => {
   const [travelersData, setTravelersData] = useState({});
   const [selectedCountryCode, setSelectedCountryCode] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const prevStepRef = useRef(0);
   const [flightSegments, setFlightSegments] = useState([]);
   const [baggageAllowance, setBaggageAllowance] = useState([]);
   const [priceDetails, setPriceDetails] = useState([]);
@@ -695,6 +697,38 @@ const Page = () => {
 
     return () => {
       abortController.abort();
+    };
+  }, []);
+
+  // Invalidate existing payment session when leaving the Payment step (step 2)
+  useEffect(() => {
+    const prev = prevStepRef.current;
+    const leavingPayment = prev === 2 && currentStep !== 2;
+    if (leavingPayment) {
+      try {
+        const sid = sessionStorage.getItem("paymentSessionId");
+        if (sid) {
+          cancelPaymentSession(sid, process.env.NEXT_PUBLIC_BASE_URI).finally(() => {
+            try {
+              sessionStorage.removeItem("paymentSessionId");
+            } catch {}
+          });
+        }
+      } catch {}
+    }
+    prevStepRef.current = currentStep;
+  }, [currentStep]);
+
+  // Cleanup on unmount: cancel any lingering session
+  useEffect(() => {
+    return () => {
+      try {
+        const sid = sessionStorage.getItem("paymentSessionId");
+        if (sid) {
+          cancelPaymentSession(sid, process.env.NEXT_PUBLIC_BASE_URI);
+          sessionStorage.removeItem("paymentSessionId");
+        }
+      } catch {}
     };
   }, []);
 

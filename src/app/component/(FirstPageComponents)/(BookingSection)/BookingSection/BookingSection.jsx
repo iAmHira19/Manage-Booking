@@ -200,13 +200,13 @@ const BookingSection = () => {
       search_Children: children.toString(),
       search_Infants: infants.toString(),
       search_Class: economy
-        ? "Y"
+        ? "Economy"
         : premiumEconomy
-        ? "P"
+        ? "PremiumEconomy"
         : business
-        ? "C"
+        ? "Business"
         : first
-        ? "F"
+        ? "First"
         : isNoPreference
         ? ""
         : "",
