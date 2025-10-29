@@ -159,9 +159,10 @@ export default function ManageBooking() {
 
         let itinerary = ctx.itinerary;
         if (!itinerary && ctx.bookingId) {
-          const res = await fetch(`${BASE_URI}/api/tp/getItinerary?PNR=${encodeURIComponent(ctx.bookingId)}`);
-          if (res.ok) {
-            itinerary = await res.json();
+          const reference = encodeURIComponent(ctx.bookingId);
+          const itineraryRes = await fetch(`${BASE_URI}/api/booking/getItinerary?PNR=${reference}`);
+          if (itineraryRes.ok) {
+            itinerary = await itineraryRes.json();
           }
         }
         if (!itinerary) return;
@@ -462,39 +463,33 @@ export default function ManageBooking() {
                                       </table>
                                     </div>
 
-                                    {/* View Ticket Actions: show when a valid ticket response exists for this booking */}
+                                    {/* Always show ticket action buttons */}
                                     <div className="mt-6 flex justify-center">
-                                      {ticketResponses[booking.id] && ticketResponses[booking.id].hasTicket ? (
-                                        <div className="flex flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
-                                          <Button
-                                            onClick={() => handleResendTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
-                                          >
-                                            <Mail className="w-4 h-4" />
-                                            <span className="text-sm">Resend Ticket Email</span>
-                                          </Button>
+                                      <div className="flex flex-row items-center justify-center gap-3 w-full sm:w-auto px-4">
+                                        <Button
+                                          onClick={() => handleResendTicket(booking.id)}
+                                          className="bg-[rgb(249,115,22)] hover:bg-[rgb(234,88,12)] text-white flex items-center gap-2 px-3 py-2 rounded-md"
+                                        >
+                                          <Mail className="w-4 h-4" />
+                                          <span className="text-sm">Resend Ticket Email</span>
+                                        </Button>
 
-                                          <Button
-                                            onClick={() => handleViewTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
-                                          >
-                                            <Eye className="w-4 h-4" />
-                                            <span className="text-sm">View Ticket</span>
-                                          </Button>
+                                        <Button
+                                          onClick={() => handleViewTicket(booking.id)}
+                                          className="bg-[rgb(249,115,22)] hover:bg-[rgb(234,88,12)] text-white flex items-center gap-2 px-3 py-2 rounded-md"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                          <span className="text-sm">View Ticket</span>
+                                        </Button>
 
-                                          <Button
-                                            onClick={() => handlePrintTicket(booking.id)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-md"
-                                          >
-                                            <Printer className="w-4 h-4" />
-                                            <span className="text-sm">Print</span>
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <div className="text-center text-sm text-gray-600 w-full sm:w-auto">
-                                          No Ticket Available
-                                        </div>
-                                      )}
+                                        <Button
+                                          onClick={() => handlePrintTicket(booking.id)}
+                                          className="bg-[rgb(249,115,22)] hover:bg-[rgb(234,88,12)] text-white flex items-center gap-2 px-3 py-2 rounded-md"
+                                        >
+                                          <Printer className="w-4 h-4" />
+                                          <span className="text-sm">Print</span>
+                                        </Button>
+                                      </div>
                                     </div>
 
                                   </div>
@@ -516,7 +511,7 @@ export default function ManageBooking() {
                 <Button
                   onClick={() => handleResendTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="bg-[#FF6B35] hover:bg-[#E55A2B] disabled:bg-[#FF6B35] disabled:hover:bg-[#E55A2B] text-white flex items-center gap-2 px-3 py-2 rounded-md disabled:opacity-60"
                 >
                   <Mail className="w-4 h-4" />
                   <span className="text-sm">Resend Ticket Email</span>
@@ -525,7 +520,7 @@ export default function ManageBooking() {
                 <Button
                   onClick={() => handleViewTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="bg-[#FF6B35] hover:bg-[#E55A2B] disabled:bg-[#FF6B35] disabled:hover:bg-[#E55A2B] text-white flex items-center gap-2 px-3 py-2 rounded-md disabled:opacity-60"
                 >
                   <Eye className="w-4 h-4" />
                   <span className="text-sm">View Ticket</span>
@@ -534,7 +529,7 @@ export default function ManageBooking() {
                 <Button
                   onClick={() => handlePrintTicket(selectedPlanRow)}
                   disabled={!selectedPlanRow}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  className="bg-[#FF6B35] hover:bg-[#E55A2B] disabled:bg-[#FF6B35] disabled:hover:bg-[#E55A2B] text-white flex items-center gap-2 px-3 py-2 rounded-md disabled:opacity-60"
                 >
                   <Printer className="w-4 h-4" />
                   <span className="text-sm">Print</span>
@@ -576,6 +571,7 @@ export default function ManageBooking() {
                 <X className="w-6 h-6" />
               </button>
             </div>
+            {/* Removed unintended Verify OTP button */}
           </div>
 
           {editingPassenger && (
@@ -1064,7 +1060,7 @@ export default function ManageBooking() {
             </Button>
             <Button
               onClick={handleSaveEdit}
-              className="px-8 py-3 bg-gradient-to-r from-[#002b5c] to-[#003d7a] hover:from-[#001d42] hover:to-[#002b5c] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12"
+              className="px-8 py-3 bg-gradient-to-r from-[#FF6B35] to-[#E55A2B] hover:from-[#E55A2B] hover:to-[#D94F25] text-white rounded-xl shadow-lg hover:shadow-xl transition-all font-medium h-12"
             >
               Save Changes
             </Button>

@@ -75,11 +75,16 @@ const fetchItineraryData = async (pnr) => {
 
   try {
     // In production, replace with actual API call
-    const response = await fetch(`${BASE_URI}/api/tp/getItinerary?PNR=${encodeURIComponent(pnr)}`, {
+    const response = await fetch(`${BASE_URI}/api/tp/getItinerary?pnr=${encodeURIComponent(pnr)}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
 
+    if (response.status === 404) {
+      setMessage({ type: "error", text: `PNR ${pnr} not found. Please verify and try again.` });
+      setDataLoading(false);
+      return;
+    }
     if (!response.ok) {
       throw new Error(`Failed to fetch itinerary data: ${response.statusText}`);
     }
@@ -555,30 +560,6 @@ const fetchItineraryData = async (pnr) => {
                 <h1 className="text-[28px] font-bold text-[#FF6B35] mb-6 tracking-wide uppercase text-left">
                   {activeMenuItem}
                 </h1>
-
-                {/* PNR Input */}
-                <div className="mb-6 flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={pnrInput}
-                    onChange={(e) => setPnrInput(e.target.value)}
-                    placeholder="Enter PNR (e.g. D720HM)"
-                    className="px-3 py-2 border rounded-md w-64"
-                  />
-                  <Button
-                    onClick={async () => {
-                      if (!pnrInput || pnrInput.trim().length === 0) {
-                        setMessage({ type: 'error', text: 'Please enter a valid PNR' });
-                        return;
-                      }
-                      setMessage({ type: '', text: '' });
-                      await fetchItineraryData(pnrInput.trim());
-                    }}
-                    className="bg-[#153E7E] hover:bg-[#0F2F5A] text-white px-4 py-2"
-                  >
-                    Load Booking
-                  </Button>
-                </div>
 
                 {/* Personal Info Section */}
                 <div className="mb-8">

@@ -5,8 +5,8 @@ export function Button({ children, className = "", variant, ...props }) {
   const base = "inline-flex items-center justify-center rounded-md font-medium focus:outline-none";
   const variantClass =
     variant === "outline"
-      ? "border border-slate-200 bg-white text-slate-700"
-      : "bg-sky-600 text-white hover:bg-sky-700";
+      ? "border border-[rgb(249,115,22)] text-[rgb(249,115,22)] bg-white hover:bg-[rgb(255,241,236)]"
+      : "bg-[rgb(249,115,22)] text-white hover:bg-[rgb(234,88,12)]";
   return (
     <button className={`${base} ${variantClass} ${className}`} {...props}>
       {children}

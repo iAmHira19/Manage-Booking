@@ -5,6 +5,7 @@ import { getAuthenticationResponse } from "./services/getAuthenticationResponse"
 import getUserSignUp from "./services/signup";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID,

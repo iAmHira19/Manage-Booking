@@ -732,9 +732,12 @@ const makeReservationCall = async () => {
                       name="postalCode"
                       value={postalCode}
                       onChange={(e) => {
-                        setPostalCode(e.target.value);
-                        handleBillingInfoChange(e);
+                        const onlyDigits = e.target.value.replace(/\D/g, "");
+                        setPostalCode(onlyDigits);
+                        handleBillingInfoChange({ target: { name: "postalCode", value: onlyDigits } });
                       }}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="block px-2.5 pb-2.5 pt-4 w-full lg:w-56 h-14 text-sm text-gray-900 bg-transparent rounded !border focus:outline-none focus:border-inherit font-gotham font-light"
                       placeholder="Postal Code"
                     />

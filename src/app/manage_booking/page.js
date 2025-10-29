@@ -12,7 +12,7 @@ export default function ManageBooking() {
   const [otpSent, setOtpSent] = useState(false);
   const [timer, setTimer] = useState(0);
   const [loading, setLoading] = useState(false);
-  const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI;
+  const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
 
   // Countdown effect
   useEffect(() => {
@@ -104,27 +104,24 @@ const handleVerifyOtp = async () => {
     // containing the word 'success' or the exact success message. Otherwise map known errors.
     const lower = data.toLowerCase();
     if (lower.includes("success") || lower.includes("validated")) {
-      // Fetch itinerary data using the PNR
-      try {
-        const itineraryRes = await fetch(`https://localhost:44379/api/tp/getItinerary?PNR=${reference}`);
-        if (!itineraryRes.ok) {
-          throw new Error("Failed to fetch itinerary details.");
-        }
-        const itineraryData = await itineraryRes.json();
+      // Persist minimal context immediately
+      sessionStorage.setItem(
+        "manageBookingContext",
+        JSON.stringify({ bookingId: reference, lastName })
+      );
 
-        // Store booking context and itinerary data in sessionStorage
-        sessionStorage.setItem(
-          "manageBookingContext",
-          JSON.stringify({
-            bookingId: reference,
-            lastName,
-            itinerary: itineraryData, // Store the full itinerary data
-          })
-        );
-      } catch (err) {
-        setError("Failed to fetch itinerary details. Please try again.");
-        console.error(err);
-        return;
+      // Best-effort prefetch (do not block navigation)
+      try {
+        const itineraryRes = await fetch(`${BASE_URI}/api/booking/getItinerary?pnr=${encodeURIComponent(reference)}`);
+        if (itineraryRes.ok) {
+          const itineraryData = await itineraryRes.json();
+          sessionStorage.setItem(
+            "manageBookingContext",
+            JSON.stringify({ bookingId: reference, lastName, itinerary: itineraryData })
+          );
+        }
+      } catch (prefetchErr) {
+        console.warn("Itinerary prefetch failed, continuing to details page", prefetchErr);
       }
 
       setOtpSent(false);
@@ -132,7 +129,6 @@ const handleVerifyOtp = async () => {
       try {
         router.push("/manage_booking/booking_details");
       } catch (e) {
-        // Fallback
         window.location.href = "/manage_booking/booking_details";
       }
       return;

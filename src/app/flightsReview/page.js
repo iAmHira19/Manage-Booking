@@ -506,8 +506,8 @@ const Page = () => {
       });
       return null;
     }
-    if (billingInfo.postalCode === "") {
-      toast.error("Postal Address cannot be empty.", {
+    if (!billingInfo.postalCode) {
+      toast.error("Postal Code cannot be empty.", {
         duration: 2000,
         style: {
           backgroundColor: "#f8312f",
@@ -516,18 +516,8 @@ const Page = () => {
       });
       return null;
     }
-    if (billingInfo.phone === "") {
-      toast.error("Phone Number cannot be empty.", {
-        duration: 2000,
-        style: {
-          backgroundColor: "#f8312f",
-          color: "#fff",
-        },
-      });
-      return null;
-    }
-    if (billingInfo.email === "") {
-      toast.error("Email cannot be empty.", {
+    if (!/^\d+$/.test(String(billingInfo.postalCode))) {
+      toast.error("Postal Code must contain digits only.", {
         duration: 2000,
         style: {
           backgroundColor: "#f8312f",

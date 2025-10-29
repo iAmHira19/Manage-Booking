@@ -27,6 +27,7 @@ import { IoEyeOffOutline, IoEyeOutline, IoLogoWhatsapp } from "react-icons/io5";
 import toast, { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
+import Image from "next/image";
 
 const Navbar = ({ isMobile }) => {
   const router = useRouter();
@@ -65,6 +66,7 @@ const Navbar = ({ isMobile }) => {
   const [countries, setCountries] = useState([]);
   const dropdownRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [language, setLanguage] = useState("ENG_UK");
   let googleWasUsed = false;
   // useEffects
   useEffect(() => {
@@ -313,6 +315,59 @@ const Navbar = ({ isMobile }) => {
 
 
 
+  // Helper: derive a best-effort 3-letter ISO from a currency record or string
+  const deriveIsoFromCurrency = (cur) => {
+    const isIso = (val) => /^[A-Za-z]{3}$/.test(String(val || ""));
+    if (!cur) return "PKR";
+    if (typeof cur === "string") {
+      const s = cur.trim();
+      if (isIso(s)) return s.toUpperCase();
+      const m = s.match(/\(([A-Za-z]{3})\)/);
+      if (m && isIso(m[1])) return m[1].toUpperCase();
+      const sl = s.toLowerCase();
+      if (sl.includes("pak")) return "PKR";
+      if (sl.includes("euro")) return "EUR";
+      if (sl.includes("us") || sl.includes("dollar")) return "USD";
+      if (sl.includes("uk") || sl.includes("gb") || sl.includes("pound")) return "GBP";
+      return "PKR";
+    }
+    const code = String(cur.tpCUR_CODE || "").trim();
+    const symbol = String(cur.tpCUR_SYMBOL || "").trim();
+    const desc = String(cur.tpCUR_DESCRIPTION || "").trim();
+    if (isIso(symbol)) return symbol.toUpperCase();
+    if (isIso(code)) return code.toUpperCase();
+    const m = desc.match(/\(([A-Za-z]{3})\)/);
+    if (m && isIso(m[1])) return m[1].toUpperCase();
+    const dl = desc.toLowerCase();
+    if (dl.includes("pak")) return "PKR";
+    if (dl.includes("euro")) return "EUR";
+    if (dl.includes("us") || dl.includes("dollar")) return "USD";
+    if (dl.includes("uk") || dl.includes("gb") || dl.includes("pound")) return "GBP";
+    return "PKR";
+  };
+
+  // Helper: map ISO to flag image src
+  const getFlagSrc = (iso) => {
+    const map = {
+      USD: "/img/Flags/united-states-of-america-flag-png-large.png",
+      PKR: "/img/Flags/pakistan-flag-png-large.png",
+      EUR: "/img/Flags/europe-flag-jpg-xl.jpg",
+      GBP: "/img/Flags/united-kingdom-flag-png-large.png",
+    };
+    return map[String(iso || "").toUpperCase()] || "/img/Flags/united-kingdom-flag-png-large.png";
+  };
+
+  // Helper: map language selection to flag image in public folder
+  const getLangFlagSrc = (lang) => {
+    const map = {
+      ENG_UK: "/img/Flags/united-kingdom-flag-png-large.png",
+      ENG_US: "/img/Flags/united-states-of-america-flag-png-large.png",
+      ENG_PK: "/img/Flags/pakistan-flag-png-large.png",
+      AR: "/img/Flags/saudi-arabia-flag-png-large.png",
+    };
+    return map[String(lang || "ENG_UK")] || "/img/Flags/united-kingdom-flag-png-large.png";
+  };
+
   return (
     <>
       <Toaster />
@@ -329,23 +384,13 @@ const Navbar = ({ isMobile }) => {
             Manage Booking
           </Link>
         </li>
-        <li className="hidden">
-          <Link
-            href="/"
-            className="text-blue-900 text-base font-gotham uppercase"
-          >
-            ENG
-          </Link>
-        </li>
         <li
           className="text-blue-900 text-base font-gotham uppercase cursor-pointer"
           onClick={() => {
             ensureCurrenciesLoaded().finally(() => setShowCurrencyModal(true));
           }}
         >
-          {/* Show Currency (ISO) in the navbar regardless of underlying storage code */}
           {(() => {
-            // Attempt to find the selected currency by code OR symbol to handle numeric codes
             const scel = String(searchCurrencyCodeContext || "").trim();
             const lower = scel.toLowerCase();
             const found = (currencyExchange || []).find((c) => {
@@ -353,57 +398,78 @@ const Navbar = ({ isMobile }) => {
               const symbol = String(c?.tpCUR_SYMBOL || "").toLowerCase();
               return code === lower || symbol === lower;
             });
-
-            // Derive a 3-letter ISO-like display code
-            const isIso = (val) => /^[A-Za-z]{3}$/.test(String(val || ""));
-            let display = "";
-            if (found) {
-              if (isIso(found.tpCUR_SYMBOL)) display = String(found.tpCUR_SYMBOL).toUpperCase();
-              else if (isIso(found.tpCUR_CODE)) display = String(found.tpCUR_CODE).toUpperCase();
-              else if (found.tpCUR_DESCRIPTION) {
-                // Try to extract '(XYZ)' from description
-                const m = String(found.tpCUR_DESCRIPTION).match(/\(([A-Za-z]{3})\)/);
-                if (m && isIso(m[1])) display = m[1].toUpperCase();
-              }
-            }
-            if (!display && isIso(scel)) display = scel.toUpperCase();
-            if (!display) display = "PKR"; // final fallback
-            return `Currency (${display})`;
+            const display = deriveIsoFromCurrency(found ? found : scel);
+            const src = getFlagSrc(display);
+            return (
+              <span className="flex items-center gap-2">
+                <span>Currency</span>
+                <Image src={src} alt={display} width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+              </span>
+            );
           })()}
         </li>
-        <li className="hidden">
+        <li className={`relative group`} ref={dropdownRef}>
           <Link
-            href="/"
-            className="text-blue-900 text-base font-gotham uppercase"
-          >
-            Welcoming Suggestion
-          </Link>
-        </li>
-        <li className="relative group" ref={dropdownRef}>
-          <Link
-            href="/customer-support"
-            // onClick={(e) => handleToggle("support", e)}
+            href="#"
+            onClick={(e) => handleToggle("Language", e)}
             className="text-blue-900 text-base flex items-center font-gotham uppercase"
           >
-            Support
-            {/* <MdArrowDropDown /> */}
+            <span className="flex items-center gap-2">
+              <span>LANGUAGE</span>
+              <Image src={getLangFlagSrc(language)} alt={language} width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+            </span>
           </Link>
-          {/* <ul
-            className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 -left-auto lg:-left-8 min-w-52 items-center ${
-              openDropdown && openDropdown === "support"
-                ? "opacity-100 visible flex"
-                : "opacity-0 invisible"
-            } justify-center flex-col shadow-md transition-all duration-300 z-50`}
+          <ul
+            className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 -left-auto lg:-left-8 min-w-40 items-center ${
+              openDropdown === "Language" ? "opacity-100 visible flex" : "opacity-0 invisible"
+            } justify-center flex-col shadow-md transition-all duration-300`}
           >
-            <li className="w-full text-center block hover:bg-orange-500  py-2 px-1">
-              <Link
-                href="/contact_us"
-                className="text-base text-white font-gotham"
+            <li className="w-full text-center block hover:bg-orange-500">
+              <button
+                type="button"
+                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
+                onClick={() => {
+                  setLanguage("ENG_UK");
+                  setOpenDropdown(null);
+                }}
               >
-                Customer Support
-              </Link>
+                <Image src={getLangFlagSrc("ENG_UK")} alt="ENG_UK" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+                <span>ENG (UK)</span>
+              </button>
             </li>
-          </ul> */}
+            <li className="w-full text-center block hover:bg-orange-500">
+              <button
+                type="button"
+                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
+                onClick={() => {
+                  setLanguage("ENG_US");
+                  setOpenDropdown(null);
+                }}
+              >
+                <Image src={getLangFlagSrc("ENG_US")} alt="ENG_US" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+                <span>ENG (US)</span>
+              </button>
+            </li>
+            <li className="w-full text-center block hover:bg-orange-500">
+              <button
+                type="button"
+                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
+                onClick={() => {
+                  setLanguage("ENG_PK");
+                  setOpenDropdown(null);
+                }}
+              >
+                <Image src={getLangFlagSrc("ENG_PK")} alt="ENG_PK" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+                <span>ENG (PK)</span>
+              </button>
+            </li>
+            <li className="w-full text-center block px-1 py-2 opacity-60 cursor-not-allowed">
+              <span className="w-full text-base font-gotham flex items-center justify-center text-white gap-2 uppercase">
+                <Image src={getLangFlagSrc("AR")} alt="AR" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+                <span>Arabic (AR)</span>
+              </span>
+            </li>
+          </ul>
         </li>
         <li
           className={`relative group ${isSignedIn ? "hidden" : "inline-block"}`}
@@ -418,9 +484,7 @@ const Navbar = ({ isMobile }) => {
           </Link>
           <ul
             className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 -left-auto lg:-left-8 min-w-40 items-center ${
-              openDropdown === "Account"
-                ? "opacity-100 visible flex"
-                : "opacity-0 invisible"
+              openDropdown === "Account" ? "opacity-100 visible flex" : "opacity-0 invisible"
             } justify-center flex-col shadow-md transition-all duration-300`}
           >
             <li
@@ -428,8 +492,7 @@ const Navbar = ({ isMobile }) => {
               onClick={() => showModal("Sign In")}
             >
               <span className="text-base font-gotham flex items-center justify-center cursor-pointer text-white px-1 py-2 uppercase">
-                <FaSignInAlt />{" "}
-                <span className="pl-2 font-gotham">Sign In</span>
+                <FaSignInAlt /> <span className="pl-2 font-gotham">Sign In</span>
               </span>
             </li>
             <li
@@ -983,26 +1046,32 @@ const Navbar = ({ isMobile }) => {
               filteredCurrencyExchange
                 .filter(Boolean)
                 .map((currency) => (
-                <div
-                  key={currency.tpCUR_CODE}
-                  className="border-b border-slate-200 p-2 rounded cursor-pointer font-gotham font-light text-base py-3 hover:text-blue-900 transition-all duration-150 ease-in-out flex justify-between items-center"
-                  onClick={() => {
-                    setShowCurrencyModal(false);
-                    // Use currency code (e.g., 'USD', 'PKR') as the provider expects a code to fetch exchange rates
-                    // Update provider with both code and a human-friendly symbol so UI updates instantly
-                    handleCurrencyChangeContext(
-                      currency.tpCUR_CODE || currency.tpCUR_SYMBOL,
-                      currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE
-                    );
-                    // Show a small confirmation toast with symbol/description for clarity
-                    toast.success(`Currency set to ${currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE}`, {
-                      duration: 2000,
-                    });
-                  }}
-                >
-                  <span>{currency.tpCUR_DESCRIPTION}</span>
-                  <span>({currency.tpCUR_SYMBOL})</span>
-                </div>
+                  <div
+                    key={currency.tpCUR_CODE}
+                    className="border-b border-slate-200 p-2 rounded cursor-pointer font-gotham font-light text-base py-3 hover:text-blue-900 transition-all duration-150 ease-in-out flex justify-between items-center"
+                    onClick={() => {
+                      setShowCurrencyModal(false);
+                      // Use currency code (e.g., 'USD', 'PKR') as the provider expects a code to fetch exchange rates
+                      // Update provider with both code and a human-friendly symbol so UI updates instantly
+                      handleCurrencyChangeContext(
+                        currency.tpCUR_CODE || currency.tpCUR_SYMBOL,
+                        currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE
+                      );
+                      // Show a small confirmation toast with symbol/description for clarity
+                      toast.success(`Currency changed to ${currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE}`, {
+                        duration: 2000,
+                      });
+                    }}
+                  >
+                    <span>{currency.tpCUR_DESCRIPTION}</span>
+                    {(() => {
+                      const iso = deriveIsoFromCurrency(currency);
+                      const src = getFlagSrc(iso);
+                      return (
+                        <Image src={src} alt={iso} width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+                      );
+                    })()}
+                  </div>
                 ))
             )}
           </div>
