@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./InputBox.module.css";
 import { Select } from "antd";
 import "./InputBoxText.css";
+import { getCountries } from "@/utils/getCountries";
 const InputBox = ({
   className,
   border,
@@ -29,6 +30,28 @@ const InputBox = ({
   const [filteredOptions, setFilteredOptions] = useState(options);
   const [searchValue, setSearchValue] = useState("");
   const [storedValue, setStoredValue] = useState("");
+  const [countryMap, setCountryMap] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const list = await getCountries();
+        const map = {};
+        (Array.isArray(list) ? list : []).forEach((c) => {
+          const name = String(c?.tpCC_COUNTRY || "").trim().toUpperCase();
+          const code = String(c?.tpCC_COUNTRY_CODE || "").trim().toUpperCase();
+          if (name && code) map[name] = code;
+        });
+        if (mounted) setCountryMap(map);
+      } catch (_) {
+        if (mounted) setCountryMap({});
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const handleAirlineChange = (selectedObject) => {
     if (!selectedObject) {
       setSelected("");
@@ -47,6 +70,30 @@ const InputBox = ({
     onChange(name, fullObject.value, fullObject.label); // Pass both value and label to onChange
   };
 
+  const renderAirlineOption = (option, searchValue = "") => {
+    const code = (option.value || "").toString().split("~")[0] || "";
+    const logoSrc = `/AirlineLogo/${code}.png`;
+    return (
+      <div className="flex items-center justify-between gap-3 w-full">
+        <span className="flex-1 min-w-0">
+          {searchValue ? (
+            highlightMatchingText(option.label, searchValue)
+          ) : (
+            <span className="font-light">{option.label}</span>
+          )}
+        </span>
+        <img
+          src={logoSrc}
+          alt={code}
+          className="h-5 w-5 object-contain shrink-0"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      </div>
+    );
+  };
+
   const getLabelForValue = (value) => {
     const matchedOption = options.find((option) => option.value === value);
     return matchedOption
@@ -54,47 +101,137 @@ const InputBox = ({
       : value;
   };
 
-  const renderAirportOption = (option, searchValue = "") => (
-    <div
-      className="md:px-2"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        fontFamily: "Gotham",
-        fontWeight: 300,
-      }}
-    >
+  const renderAirportOption = (option, searchValue = "") => {
+    const iata = String((option.value || "").toString().split("~")[0] || "").toUpperCase();
+    const byProp = (option.countryCode || "").toString().toUpperCase();
+    const countryNameUpper = String(option.countryName || "").trim().toUpperCase();
+    const byName = countryMap[countryNameUpper] || "";
+    const countryCode = byProp || byName;
+    const encodedFolder = encodeURIComponent("The Flags of Whole Countries");
+    const folder = "The Flags of Whole Countries";
+    const aliasMap = {
+      "SAUDI ARABIA": ["SA", "KSA", "SAUDI ARABIA"],
+      "UNITED ARAB EMIRATES": ["AE", "UAE", "UNITED ARAB EMIRATES"],
+      "UNITED KINGDOM": ["GB", "UK", "UNITED KINGDOM"],
+      "UNITED STATES": ["US", "USA", "UNITED STATES"],
+      "RUSSIA": ["RU", "RUS", "RUSSIA"],
+      "IRAN": ["IR", "IRN", "IRAN"],
+      "PAKISTAN": ["PK", "PAK", "PAKISTAN"],
+      "FRANCE": ["FR", "FRA", "FRANCE"],
+      "FRANCE, METROPOLITAN": ["FR", "FRA", "FRANCE"],
+      "FRENCH POLYNESIA": ["PF", "FRENCH POLYNESIA"],
+    };
+    const nameAliases = aliasMap[countryNameUpper] || [countryNameUpper];
+    const buildFlagCandidates = (cc, nameList) => {
+      const list = [];
+      const pushForToken = (raw) => {
+        if (!raw) return;
+        const base = String(raw).trim();
+        const variants = new Set();
+        const proper = base
+          .toLowerCase()
+          .split(/\s+/)
+          .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+          .join(" ");
+        variants.add(base.toUpperCase());
+        variants.add(base.toLowerCase());
+        variants.add(proper);
+        // hyphen and underscore variants
+        Array.from([...variants]).forEach((v) => {
+          variants.add(v.replace(/\s+/g, "-"));
+          variants.add(v.replace(/\s+/g, "_"));
+        });
+        variants.forEach((t) => {
+          list.push(
+            `/${encodedFolder}/${t}.png`,
+            `/${folder}/${t}.png`,
+            `/${encodedFolder}/${t}.jpg`,
+            `/${folder}/${t}.jpg`,
+            `/${encodedFolder}/${t}.jpeg`,
+            `/${folder}/${t}.jpeg`,
+            `/${encodedFolder}/${t}.webp`,
+            `/${folder}/${t}.webp`
+          );
+        });
+      };
+      pushForToken(cc);
+      (nameList || []).forEach(pushForToken);
+      return list;
+    };
+    const airportOverride = {
+      JED: ["SA", "KSA", "SAUDI ARABIA"],
+      AAA: ["PF", "FRENCH POLYNESIA", "GY"],
+    };
+    const overrideTokens = airportOverride[iata];
+    const flagCandidates = overrideTokens
+      ? buildFlagCandidates("", overrideTokens)
+      : buildFlagCandidates(countryCode, nameAliases);
+    const flagSrc = flagCandidates.length > 0 ? flagCandidates[0] : null;
+    return (
       <div
+        className="md:px-2"
         style={{
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "space-between",
           fontFamily: "Gotham",
           fontWeight: 300,
         }}
       >
-        <div>
-          {searchValue
-            ? highlightMatchingText(option.cityName, searchValue)
-            : option.cityName}
-          ,{" "}
-          {searchValue
-            ? highlightMatchingText(option.countryName, searchValue)
-            : option.countryName}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            fontFamily: "Gotham",
+            fontWeight: 300,
+          }}
+        >
+          <div>
+            {searchValue
+              ? highlightMatchingText(option.cityName, searchValue)
+              : option.cityName}
+            ,{" "}
+            {searchValue
+              ? highlightMatchingText(option.countryName, searchValue)
+              : option.countryName}
+          </div>
+          <div style={{ fontSize: "12px", fontWeight: 300 }}>
+            {searchValue
+              ? highlightMatchingText(option.airportName, searchValue)
+              : option.airportName}
+          </div>
         </div>
-        <div style={{ fontSize: "12px", fontWeight: 300 }}>
-          {searchValue
-            ? highlightMatchingText(option.airportName, searchValue)
-            : option.airportName}
-        </div>
+        <span className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 border text-xs">
+            <span className="font-semibold">
+              {searchValue
+                ? highlightMatchingText(option.value?.split("~")[0], searchValue)
+                : option.value?.split("~")[0]}
+            </span>
+            {flagSrc && (
+              <img
+                src={flagSrc}
+                alt={countryCode}
+                className="h-4 w-6 object-contain rounded-sm"
+                data-idx="0"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  const i = parseInt(el.getAttribute("data-idx") || "0", 10);
+                  const next = flagCandidates[i + 1];
+                  if (next) {
+                    el.setAttribute("data-idx", String(i + 1));
+                    el.src = next;
+                  } else {
+                    el.style.display = "none";
+                  }
+                }}
+              />
+            )}
+          </span>
+        </span>
       </div>
-      <p>
-        {searchValue
-          ? highlightMatchingText(option.value?.split("~")[0], searchValue)
-          : option.value?.split("~")[0]}
-      </p>
-    </div>
-  );
+    );
+  };
 
   const handleAirportChange = (selectedObject) => {
     if (!selectedObject) {
@@ -287,11 +424,7 @@ const InputBox = ({
             ...option,
             key: index,
             label: airline ? (
-              searchValue ? (
-                highlightMatchingText(option.label, searchValue)
-              ) : (
-                <span className="font-light">{option.label}</span>
-              )
+              renderAirlineOption(option, searchValue)
             ) : searchValue ? (
               renderAirportOption(option, searchValue)
             ) : (
