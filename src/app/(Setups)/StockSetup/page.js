@@ -17,7 +17,7 @@ const Page = () => {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   if (loading) {
     return (

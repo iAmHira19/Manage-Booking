@@ -34,6 +34,22 @@ export const SignInContextProvider = ({ children }) => {
   const [exchangeRate, setExchangeRate] = useState(1);
   const { getCurrencyApi } = useCurrencyApi();
 
+  // Helper: normalize any input into a 3-letter ISO currency code
+  const normalizeCurrencyCode = (cur) => {
+    const isIso = (val) => /^[A-Za-z]{3}$/.test(String(val || ""));
+    if (!cur) return "PKR";
+    const s = String(cur).trim();
+    if (isIso(s)) return s.toUpperCase();
+    const m = s.match(/\(([A-Za-z]{3})\)/);
+    if (m && isIso(m[1])) return m[1].toUpperCase();
+    const sl = s.toLowerCase();
+    if (sl.includes("pak")) return "PKR";
+    if (sl.includes("euro")) return "EUR";
+    if (sl.includes("us") || sl.includes("dollar")) return "USD";
+    if (sl.includes("uk") || sl.includes("gb") || sl.includes("pound")) return "GBP";
+    return "PKR";
+  };
+
   // Initialize client-side data after hydration
   useEffect(() => {
     setIsHydrated(true);
@@ -41,13 +57,26 @@ export const SignInContextProvider = ({ children }) => {
     // Only access storage on client-side. Prefer sessionStorage, fallback to localStorage.
     if (typeof window !== "undefined") {
       const storedSignIn = sessionStorage.getItem("signIn");
+      const storedSignInLocal = localStorage.getItem("signIn");
       const storedCurrencySession = sessionStorage.getItem("currency");
       const storedCurrencyLocal = localStorage.getItem("currency");
       const storedCurrencySymbolSession = sessionStorage.getItem("currencySymbol");
       const storedCurrencySymbolLocal = localStorage.getItem("currencySymbol");
 
-      if (storedSignIn) {
-        setIsSignedIn(storedSignIn === "true");
+      if (storedSignIn || storedSignInLocal) {
+        let val = (storedSignIn ?? storedSignInLocal) === "true";
+        // If there's no username saved, consider user logged out
+        try {
+          const uname = sessionStorage.getItem("username");
+          if (!uname || String(uname).trim() === "") {
+            val = false;
+          }
+        } catch (e) {}
+        setIsSignedIn(val);
+        try {
+          sessionStorage.setItem("signIn", val ? "true" : "false");
+          localStorage.setItem("signIn", val ? "true" : "false");
+        } catch (e) {}
       }
 
       // Get the username from sessionStorage and ensure it's cleaned
@@ -125,6 +154,9 @@ export const SignInContextProvider = ({ children }) => {
   const signInFn = () => {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("signIn", "true");
+      try {
+        localStorage.setItem("signIn", "true");
+      } catch (e) {}
       setIsSignedIn(true);
     }
   };
@@ -135,6 +167,9 @@ export const SignInContextProvider = ({ children }) => {
       sessionStorage.removeItem("username");
 
       sessionStorage.setItem("signIn", "false");
+      try {
+        localStorage.setItem("signIn", "false");
+      } catch (e) {}
       setIsSignedIn(false);
     }
   };
@@ -158,22 +193,20 @@ export const SignInContextProvider = ({ children }) => {
 
   const handleCurrencyChangeFn = (curr_Code, curr_Symbol) => {
     if (typeof window !== "undefined") {
+      // Prefer provided code; otherwise derive from symbol/description
+      const iso = normalizeCurrencyCode(curr_Code || curr_Symbol);
+      const sym = typeof curr_Symbol !== "undefined" ? String(curr_Symbol) : iso;
       try {
-        sessionStorage.setItem("currency", curr_Code);
-        localStorage.setItem("currency", curr_Code);
-        if (typeof curr_Symbol !== 'undefined') {
-          sessionStorage.setItem('currencySymbol', curr_Symbol);
-          localStorage.setItem('currencySymbol', curr_Symbol);
-        }
+        sessionStorage.setItem("currency", iso);
+        localStorage.setItem("currency", iso);
+        sessionStorage.setItem("currencySymbol", sym);
+        localStorage.setItem("currencySymbol", sym);
       } catch (e) {
         // ignore storage errors
       }
-      console.debug('SignInStateProvider: handleCurrencyChangeFn called', { curr_Code, curr_Symbol });
-      setSearchCurrencyCode(curr_Code);
-      if (typeof curr_Symbol !== 'undefined') {
-        setSearchCurrencySymbol(curr_Symbol);
-        console.debug('SignInStateProvider: updated searchCurrencySymbol ->', curr_Symbol);
-      }
+      console.debug('SignInStateProvider: handleCurrencyChangeFn normalized', { inputCode: curr_Code, inputSymbol: curr_Symbol, iso, sym });
+      setSearchCurrencyCode(iso);
+      setSearchCurrencySymbol(sym);
     }
   };
 

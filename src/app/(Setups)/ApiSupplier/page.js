@@ -33,7 +33,7 @@ const Page = () => {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   useEffect(() => {
     setApiSupplierData(ApiSupplierData);

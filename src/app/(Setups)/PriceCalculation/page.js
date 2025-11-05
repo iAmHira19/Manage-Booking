@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Form, Input, Select, Checkbox, DatePicker, message } from "antd";
 import "./PriceCalculation.css";
 import { Button } from "antd";
@@ -52,27 +52,36 @@ const Page = () => {
 
   // const [isNewRecord, setIsNewRecord] = useState(false);
 
-  // Helper function to get label from dropdown data
-  const getCustomerTypeLabel = (value) => {
-    const customerTypeOption = dropdownData?.objUserGroup?.find(
-      (item) => item.UG_CSTTYPE === value
-    );
-    return customerTypeOption ? customerTypeOption.UG_CODE : value;
-  };
+  // Helper functions wrapped in useCallback to keep stable refs
+  const getCustomerTypeLabel = useCallback(
+    (value) => {
+      const customerTypeOption = dropdownData?.objUserGroup?.find(
+        (item) => item.UG_CSTTYPE === value
+      );
+      return customerTypeOption ? customerTypeOption.UG_CODE : value;
+    },
+    [dropdownData]
+  );
 
-  const getApiSupplierLabel = (value) => {
-    const apiSupplierOption = dropdownData?.objGds?.find(
-      (item) => item.tpGDS_CODE === value
-    );
-    return apiSupplierOption ? apiSupplierOption.tpGDS_NAME : value;
-  };
+  const getApiSupplierLabel = useCallback(
+    (value) => {
+      const apiSupplierOption = dropdownData?.objGds?.find(
+        (item) => item.tpGDS_CODE === value
+      );
+      return apiSupplierOption ? apiSupplierOption.tpGDS_NAME : value;
+    },
+    [dropdownData]
+  );
 
-  const getProductLabel = (value) => {
-    const productOption = dropdownData?.objCategory?.find(
-      (item) => item.ctg_CODE === value
-    );
-    return productOption ? productOption.ctg_DESCRIPTION : value;
-  };
+  const getProductLabel = useCallback(
+    (value) => {
+      const productOption = dropdownData?.objCategory?.find(
+        (item) => item.ctg_CODE === value
+      );
+      return productOption ? productOption.ctg_DESCRIPTION : value;
+    },
+    [dropdownData]
+  );
 
   const getProductValue = (value) => {
     const productOption = dropdownData?.objCategory?.find(
@@ -137,7 +146,7 @@ const Page = () => {
     } else {
       setPageLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -152,7 +161,7 @@ const Page = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [getPriceCalApi, getPriceCalCstmrTypDDApi]);
 
   useEffect(() => {
     if (customerType && apisupplier && product) {
@@ -165,7 +174,7 @@ const Page = () => {
       setSchemeDesc(newSchemeDesc);
       form.setFieldsValue({ schemeDesc: newSchemeDesc });
     }
-  }, [customerType, apisupplier, product, dropdownData]);
+  }, [customerType, apisupplier, product, dropdownData, form, getApiSupplierLabel, getCustomerTypeLabel, getProductLabel]);
 
   if (pageloading) {
     return (

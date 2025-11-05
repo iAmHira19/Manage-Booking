@@ -85,7 +85,7 @@ const InputBox = ({
         <img
           src={logoSrc}
           alt={code}
-          className="h-5 w-5 object-contain shrink-0"
+          className="h-6 w-6 object-contain shrink-0"
           onError={(e) => {
             e.currentTarget.style.display = "none";
           }}

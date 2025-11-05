@@ -20,7 +20,7 @@ const Page = () => {
     } else {
       setPageLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   const [apiResponse, setApiResponse] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -43,7 +43,7 @@ const Page = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [getPriorityApi]);
 
   if (pageloading) {
     return (

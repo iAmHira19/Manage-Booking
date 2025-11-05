@@ -96,7 +96,7 @@ function Page() {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   useEffect(() => {
     async function fetchCurrencies() {
@@ -121,7 +121,7 @@ function Page() {
     if (callCurrencies) {
       fetchCurrencies();
     }
-  }, [criteria, callCurrencies]);
+  }, [criteria, callCurrencies, getCurrencyApi]);
 
   useEffect(() => {
     if (showAddCurrency) {

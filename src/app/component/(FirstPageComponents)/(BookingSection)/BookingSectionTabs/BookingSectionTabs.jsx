@@ -63,6 +63,22 @@ const BookingSectionTabs = ({
         />
         <Button
           disabled={true}
+          Text="Things to Do"
+          width="w-full"
+          PYXL="xl:py-5"
+          PYSM="sm:py-3"
+          onClick={() => {
+            setIsHotel(false);
+            setIsCars(false);
+            setIsCruise(false);
+            setIsTTD(true);
+            setIsFlight(false);
+          }}
+          Icon={<SiSmartthings></SiSmartthings>}
+          Class={isTTD && "active"}
+        />
+        <Button
+          disabled={true}
           Text="Cars"
           width="w-full"
           PYXL="xl:py-5"
@@ -92,22 +108,6 @@ const BookingSectionTabs = ({
           }}
           Icon={<SiMentorcruise></SiMentorcruise>}
           Class={isCruise && "active"}
-        />
-        <Button
-          disabled={true}
-          Text="Activity"
-          width="w-full"
-          PYXL="xl:py-5"
-          PYSM="sm:py-3"
-          onClick={() => {
-            setIsHotel(false);
-            setIsCars(false);
-            setIsCruise(false);
-            setIsTTD(true);
-            setIsFlight(false);
-          }}
-          Icon={<SiSmartthings></SiSmartthings>}
-          Class={isTTD && "active"}
         />
       </div>
     </div>

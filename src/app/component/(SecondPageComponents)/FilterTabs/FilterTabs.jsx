@@ -4,6 +4,7 @@ function FilterTabs({
   setFilteredOptions,
   selectedFilterTab,
   setSelectedFilterTab,
+  onChangeCurrency,
 }) {
   useEffect(() => {
     const derivePrice = (item) => {
@@ -52,11 +53,11 @@ function FilterTabs({
         return copy.sort((a, b) => deriveDuration(a) - deriveDuration(b));
       });
     }
-  }, [selectedFilterTab]);
+  }, [selectedFilterTab, setFilteredOptions]);
 
   return (
     <>
-      <div className="flex gap-3 border sm:border-2 border-slate-300 justify-around flex-wrap lg:justify-start rounded mb-5 text-center font-gotham">
+      <div className="flex gap-3 border sm:border-2 border-slate-300 flex-wrap rounded mb-5 text-center font-gotham items-center px-2">
         <button
           className={`lg:px-10 lg:w-40 py-3 text-xs sm:text-sm md:text-base text-blue-900 sm:font-bold font-gotham ${
             selectedFilterTab === "suggested" ? "bg-blue-100" : ""
@@ -89,6 +90,15 @@ function FilterTabs({
         >
           Fastest
         </button>
+        <div className="ml-auto my-2">
+          <button
+            type="button"
+            className="px-4 py-2 bg-orange-500 text-white rounded text-xs sm:text-sm md:text-base"
+            onClick={() => onChangeCurrency && onChangeCurrency()}
+          >
+            Change Currency
+          </button>
+        </div>
       </div>
     </>
   );

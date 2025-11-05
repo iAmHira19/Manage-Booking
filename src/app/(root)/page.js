@@ -1,5 +1,4 @@
 "use client";
-import { useEffect } from "react";
 import styles from "@/app/page.module.css";
 import BookingSection from "@/app/component/(FirstPageComponents)/(BookingSection)/BookingSection/BookingSection";
 import HeroSectionCard from "@/app/component/(FirstPageComponents)/HeroSectionCard/HeroSectionCard";
@@ -7,18 +6,6 @@ import Achievements from "@/app/component/(FirstPageComponents)/Achievements/Ach
 import AutoSlider from "@/app/component/(FirstPageComponents)/Autoslider/AutoSlider";
 import { Toaster } from "react-hot-toast";
 export default function Home() {
-   useEffect(() => {
-    // --- Clear storages ---
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // --- Clear cookies accessible by JS ---
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-  }, []);
   return (
     <>
       <Toaster />

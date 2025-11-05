@@ -20,17 +20,18 @@ import { cleanupUsername } from "@/utils/cleanupUsername";
 
 // Icon Imports
 import { MdArrowDropDown } from "react-icons/md";
-import { FaPhoneAlt, FaSignInAlt } from "react-icons/fa";
+import { FaPhoneAlt, FaSignInAlt, FaLock } from "react-icons/fa";
 import { GrUserNew } from "react-icons/gr";
 import { FaFacebookF, FaGoogle } from "react-icons/fa6";
 import { IoEyeOffOutline, IoEyeOutline, IoLogoWhatsapp } from "react-icons/io5";
 import toast, { Toaster } from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Image from "next/image";
 
 const Navbar = ({ isMobile }) => {
   const router = useRouter();
+  const pathname = usePathname();
   let { data: session } = useSession();
   const { data: AirportData } = useAirports("none");
   const { getAuthenticationResponse } = useAuthenticateUser();
@@ -126,18 +127,21 @@ const Navbar = ({ isMobile }) => {
   }, [AirportData]);
   useEffect(() => {
     if (checkSessionStorage) {
-      const IssignedInLoc = sessionStorage.getItem("signIn") === "true";
+      const isFlagTrue = sessionStorage.getItem("signIn") === "true";
+      const storedUsername = sessionStorage.getItem("username") || "";
+      const cleanedStored = cleanupUsername(storedUsername);
+      const effectiveSignedIn = isFlagTrue && cleanedStored.trim() !== "";
       setCheckSessionStorage(false);
-      setIsSignedIn(IssignedInLoc);
-      if (IssignedInLoc) {
-        // Get the username from sessionStorage and ensure it's cleaned immediately
-        const storedUsername = sessionStorage.getItem("username");
-        const cleanedStored = cleanupUsername(storedUsername || "");
-        // Persist cleaned value back to storage to avoid stale duplicates
+      setIsSignedIn(effectiveSignedIn);
+      if (effectiveSignedIn) {
+        // Persist cleaned username
         sessionStorage.setItem("username", cleanedStored);
         setUsernameContext(cleanedStored);
         setUserIdContext(sessionStorage.getItem("userId"));
         setUserGroupContext(sessionStorage.getItem("userGroup"));
+      } else {
+        // Ensure UI shows Log In when data is incomplete
+        setUsernameContext("");
       }
     }
   }, [checkSessionStorage, setCheckSessionStorage, setIsSignedIn, setUsernameContext, setUserIdContext, setUserGroupContext]);
@@ -384,30 +388,7 @@ const Navbar = ({ isMobile }) => {
             Manage Booking
           </Link>
         </li>
-        <li
-          className="text-blue-900 text-base font-gotham uppercase cursor-pointer"
-          onClick={() => {
-            ensureCurrenciesLoaded().finally(() => setShowCurrencyModal(true));
-          }}
-        >
-          {(() => {
-            const scel = String(searchCurrencyCodeContext || "").trim();
-            const lower = scel.toLowerCase();
-            const found = (currencyExchange || []).find((c) => {
-              const code = String(c?.tpCUR_CODE || "").toLowerCase();
-              const symbol = String(c?.tpCUR_SYMBOL || "").toLowerCase();
-              return code === lower || symbol === lower;
-            });
-            const display = deriveIsoFromCurrency(found ? found : scel);
-            const src = getFlagSrc(display);
-            return (
-              <span className="flex items-center gap-2">
-                <span>Currency</span>
-                <Image src={src} alt={display} width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-              </span>
-            );
-          })()}
-        </li>
+        {/* Currency removed from Navbar (now available on the search results page form only) */}
         <li className={`relative group`} ref={dropdownRef}>
           <Link
             href="#"
@@ -472,19 +453,22 @@ const Navbar = ({ isMobile }) => {
           </ul>
         </li>
         <li
-          className={`relative group ${isSignedIn ? "hidden" : "inline-block"}`}
+          className={`relative group ${!isSignedIn || !displayUsername ? "inline-block" : "hidden"}`}
           ref={dropdownRef}
         >
           <Link
             href="#"
-            onClick={(e) => handleToggle("Account", e)}
+            onClick={(e) => {
+              e.preventDefault();
+              router.push("/auth/signin");
+            }}
             className="text-blue-900 text-base flex items-center font-gotham uppercase"
           >
-            Account <MdArrowDropDown />
+            <FaLock className="mr-1" /> Log In <MdArrowDropDown />
           </Link>
           <ul
             className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 -left-auto lg:-left-8 min-w-40 items-center ${
-              openDropdown === "Account" ? "opacity-100 visible flex" : "opacity-0 invisible"
+              openDropdown === "Login" ? "opacity-100 visible flex" : "opacity-0 invisible"
             } justify-center flex-col shadow-md transition-all duration-300`}
           >
             <li
@@ -506,7 +490,7 @@ const Navbar = ({ isMobile }) => {
           </ul>
         </li>
         <li
-          className={`relative group ${isSignedIn ? "inline-block" : "hidden"}`}
+          className={`relative group ${isSignedIn && displayUsername ? "inline-block" : "hidden"}`}
           ref={dropdownRef}
         >
           <Link
@@ -667,14 +651,14 @@ const Navbar = ({ isMobile }) => {
         <li>
           <Link
             href="#"
-            onClick={(e) => handleToggle("Helpline", e)}
+            onClick={(e) => handleToggle("Support", e)}
             className="text-blue-900 text-base flex items-center font-gotham uppercase"
           >
-            Helpline <MdArrowDropDown />
+            Support <MdArrowDropDown />
           </Link>
           <ul
             className={`absolute bg-blue-900 gap-2 py-2 rounded top-16  lg:right-1 min-w-48 items-center ${
-              openDropdown === "Helpline"
+              openDropdown === "Support"
                 ? "opacity-100 visible flex"
                 : "opacity-0 invisible"
             } justify-center flex-col shadow-md transition-all duration-300`}
@@ -1051,10 +1035,9 @@ const Navbar = ({ isMobile }) => {
                     className="border-b border-slate-200 p-2 rounded cursor-pointer font-gotham font-light text-base py-3 hover:text-blue-900 transition-all duration-150 ease-in-out flex justify-between items-center"
                     onClick={() => {
                       setShowCurrencyModal(false);
-                      // Use currency code (e.g., 'USD', 'PKR') as the provider expects a code to fetch exchange rates
-                      // Update provider with both code and a human-friendly symbol so UI updates instantly
+                      // Always send ISO code (e.g., 'USD', 'PKR') as first arg; second arg is friendly symbol/desc
                       handleCurrencyChangeContext(
-                        currency.tpCUR_CODE || currency.tpCUR_SYMBOL,
+                        currency.tpCUR_SYMBOL || currency.tpCUR_CODE || currency.tpCUR_DESCRIPTION,
                         currency.tpCUR_SYMBOL || currency.tpCUR_DESCRIPTION || currency.tpCUR_CODE
                       );
                       // Show a small confirmation toast with symbol/description for clarity

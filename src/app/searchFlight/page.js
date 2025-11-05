@@ -9,7 +9,7 @@ import { RiArrowDropDownLine, RiCloseLine } from "react-icons/ri";
 import { RxCross1, RxCrossCircled } from "react-icons/rx";
 import { SlCalender } from "react-icons/sl";
 import { FaSearch } from "react-icons/fa";
-import { DatePicker } from "antd";
+import { DatePicker, Modal } from "antd";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useOneWayApi } from "@/utils/getOneWayapi";
@@ -22,6 +22,7 @@ import { useCookiesContext } from "@/providers/CookieProvider";
 import { v4 as uuidv4, v4 } from "uuid";
 import styles from "@/app/searchFlight/page.module.css";
 import { useSignInContext } from "@/providers/SignInStateProvider";
+import { getCurrency } from "@/utils/getCurrency";
 import "./page.css";
 // handlers
 import toast, { Toaster } from "react-hot-toast";
@@ -33,7 +34,7 @@ const Page = () => {
   const { RangePicker } = DatePicker;
   const { MiniButton, Travel, TravelersCompo, ClassCompo, InputBoxText } =
     components;
-  const { searchCurrencyCode, exchangeRate } = useSignInContext();
+  const { searchCurrencyCode, exchangeRate, handleCurrencyChangeFn } = useSignInContext();
   // const [showFlightDetails, setShowFlightDetails] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [showMiniFilters, setShowMiniFilters] = useState(false);
@@ -45,12 +46,46 @@ const Page = () => {
   const { getSecondLegApi, loadingSecondLeg } = useSecondLegApi();
   const [isClientLoaded, setIsClientLoaded] = useState(false);
   const [selectedFilterTab, setSelectedFilterTab] = useState("");
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [currencyExchange, setCurrencyExchange] = useState([]);
+  const [filteredCurrencyExchange, setFilteredCurrencyExchange] = useState([]);
+  const [searchedCurrency, setSearchedCurrency] = useState("");
   const { data: AirportData } = useAirports("none");
   const { data: AirlineData } = useAirline();
 
   useEffect(() => {
     setIsClientLoaded(true);
   }, []);
+
+  useEffect(() => {
+    const ensureCurrencies = async () => {
+      try {
+        const list = await getCurrency();
+        const arr = Array.isArray(list) ? list : [];
+        setCurrencyExchange(arr);
+        setFilteredCurrencyExchange(arr);
+      } catch (e) {
+        setCurrencyExchange([]);
+        setFilteredCurrencyExchange([]);
+      }
+    };
+    ensureCurrencies();
+  }, []);
+
+  useEffect(() => {
+    const q = (searchedCurrency || "").toLowerCase();
+    if (!q) {
+      setFilteredCurrencyExchange(currencyExchange);
+      return;
+    }
+    const filtered = (currencyExchange || []).filter((c) => {
+      const code = String(c?.tpCUR_CODE || "").toLowerCase();
+      const symbol = String(c?.tpCUR_SYMBOL || "").toLowerCase();
+      const desc = String(c?.tpCUR_DESCRIPTION || "").toLowerCase();
+      return code.includes(q) || symbol.includes(q) || desc.includes(q);
+    });
+    setFilteredCurrencyExchange(filtered);
+  }, [searchedCurrency, currencyExchange]);
 
   const [userData, setUserData] = useState("");
   useEffect(() => {
@@ -1497,6 +1532,7 @@ const Page = () => {
                   setFilteredOptions={setFilteredOptions}
                   selectedFilterTab={selectedFilterTab}
                   setSelectedFilterTab={setSelectedFilterTab}
+                  onChangeCurrency={() => setShowCurrencyModal(true)}
                 />
               </div>
               {/* Flight selection area */}
@@ -1820,6 +1856,45 @@ const Page = () => {
           />
         </div>
       </div> */}
+      {/* Change Currency Modal */}
+      <Modal
+        title={<h2 className="text-lg font-gotham text-blue-900">Select Currency</h2>}
+        open={showCurrencyModal}
+        onCancel={() => setShowCurrencyModal(false)}
+        footer={null}
+      >
+        <div className="flex flex-col gap-3">
+          <input
+            type="text"
+            value={searchedCurrency}
+            onChange={(e) => setSearchedCurrency(e.target.value)}
+            placeholder="Search Currency"
+            className="w-full border border-slate-300 outline-none rounded font-gotham font-light p-2"
+          />
+          <div className="max-h-80 overflow-y-auto border rounded">
+            {(filteredCurrencyExchange || []).map((currency) => (
+              <button
+                key={currency.tpCUR_CODE}
+                type="button"
+                className="w-full text-left border-b border-slate-200 p-2 rounded cursor-pointer font-gotham font-light text-base py-3 hover:text-blue-900 transition-all duration-150 ease-in-out flex justify-between items-center"
+                onClick={() => {
+                  setShowCurrencyModal(false);
+                  handleCurrencyChangeFn(
+                    currency.tpCUR_SYMBOL || currency.tpCUR_CODE || currency.tpCUR_DESCRIPTION,
+                    currency.tpCUR_SYMBOL || currency.tpCUR_CODE
+                  );
+                }}
+              >
+                <span>{currency.tpCUR_DESCRIPTION}</span>
+                <span className="font-mono">{currency.tpCUR_CODE || currency.tpCUR_SYMBOL}</span>
+              </button>
+            ))}
+            {filteredCurrencyExchange && filteredCurrencyExchange.length === 0 && (
+              <div className="p-4 text-center text-sm text-slate-500">No currency found</div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

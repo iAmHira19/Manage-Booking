@@ -55,7 +55,7 @@ const Page = () => {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,7 +68,7 @@ const Page = () => {
       }
     };
     fetchData();
-  }, [customerResp]);
+  }, [customerResp, getCustomerType]);
 
   // ADDED: Filter customers based on search term - filters by ID, name, type, and contact number
   useEffect(() => {
