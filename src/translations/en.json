@@ -1,0 +1,18 @@
+{
+  "common": {
+    "welcome": "Welcome to HFT Travel",
+    "home": "Home",
+    "about": "About Us",
+    "contact": "Contact Us",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "searchFlights": "Search Flights",
+    "manageBooking": "Manage Booking",
+    "myAccount": "My Account",
+    "logout": "Logout"
+  },
+  "home": {
+    "heroTitle": "Book Your Next Adventure",
+    "heroSubtitle": "Find the best flight deals to your dream destinations"
+  }
+}

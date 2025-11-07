@@ -8,7 +8,9 @@ import { useSignInContext } from '@/providers/SignInStateProvider';
 import {
   formatDateWithSlashWithoutYear,
   formatDateWithSlash,
+  formatDateWithDay,
 } from "@/utils/formatDateWithSlash";
+
 import Image from "next/image";
 import { Button, Timeline, Tooltip } from "antd";
 import ProductCardDetails from "./ProductCardDetails";
@@ -94,19 +96,21 @@ const FlightReviewCard = ({
             >
               <div className="titleBar flex justify-between items-center bg-orange-500 px-2 lg:px-5 py-3 lg:py-5 text-white">
                 <div className="legTitle hidden sm:inline-block font-bold text-sm md:text-base lg:text-lg">
-                  {`${depCityName?.tpAIRPORT_CITYNAME} (${
+                  {/* {`${depCityName?.tpAIRPORT_CITYNAME} (${
                     fLeg?.[0]?.Departure.location
-                  }) -
+                  }) to
                   (${fLeg?.[fLeg.length - 1]?.Arrival.location}) ${
                     arrCityName?.tpAIRPORT_CITYNAME
-                  }`}
+                  }`} */}
+                  {`${depCityName?.tpAIRPORT_CITYNAME} to ${arrCityName?.tpAIRPORT_CITYNAME}`}
                 </div>
                 <div className="legTitle inline-block sm:hidden font-bold text-sm md:text-base lg:text-lg">
                   {`${depCityName?.tpAIRPORT_CITYNAME} -
                   ${arrCityName?.tpAIRPORT_CITYNAME}`}
                 </div>
                 <div className="date font-bold text-sm md:text-base lg:text-lg">
-                  {formatDateWithSlash(fLeg[0]?.Departure.dateUK)}
+                  {/* {formatDateWithSlash(fLeg[0]?.Departure.dateUK)} */}
+                  {formatDateWithDay(fLeg[0]?.Departure.dateUK)}
                 </div>
               </div>
               <div

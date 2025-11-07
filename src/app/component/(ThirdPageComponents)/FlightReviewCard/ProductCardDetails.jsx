@@ -189,6 +189,12 @@ const ProductCardDetails = ({
       });
 
       setPassengerAllowances(allowances);
+      console.log('Full Flight Review Data (including all flight details/segments):', JSON.stringify(flightReviewData, null, 2));
+console.log('Raw Baggage Allowance:', JSON.stringify(baggageAllowance, null, 2));
+console.log('Filtered Baggage Allowance Local:', JSON.stringify(baggageAllowanceLocal, null, 2));
+console.log('Processed Passenger Allowances (with checked/carry-on details):', JSON.stringify(passengerAllowances, null, 2));
+console.log('Baggage/Flight Restrictions:', JSON.stringify(restriction, null, 2));
+console.log('Flight Legs (segment details):', JSON.stringify(flightLegs, null, 2));
     } catch (err) {
       console.error("Error processing passenger allowances:", err);
       setError("Error processing baggage allowances");
@@ -326,17 +332,17 @@ const ProductCardDetails = ({
                           key={index}
                           className={index % 2 === 0 ? "bg-gray-50" : ""}
                         >
-                          <td className="py-1 lg:py-2 px-2 lg:px-4 border font-medium text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                          <td className="py-1 lg:py-2 px-2 lg:px-4 border font-medium text-xs sm:text-sm lg:text-base whitespace-nowrap text-center">
                             {getPassengerTypeDisplay(allowance.passengerType)}
                           </td>
-                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs sm:text-sm lg:text-base whitespace-nowrap text-center">
                             {allowance.checkedBaggage}
                           </td>
-                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs sm:text-sm lg:text-base whitespace-nowrap text-center">
                             {allowance.carryOn}
                           </td>
-                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs lg:text-sm">
-                            <div className="max-w-[120px] sm:max-w-[150px]">
+                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs lg:text-sm text-center">
+                            <div className="max-w-[120px] sm:max-w-[150px] mx-auto">
                               {allowance.checkedDescription.map((desc, i) => (
                                 <div key={i} className="break-words">
                                   {desc}
@@ -344,8 +350,8 @@ const ProductCardDetails = ({
                               ))}
                             </div>
                           </td>
-                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs lg:text-sm">
-                            <div className="max-w-[120px] sm:max-w-[150px]">
+                          <td className="py-1 lg:py-2 px-2 lg:px-4 border text-xs lg:text-sm text-center">
+                            <div className="max-w-[120px] sm:max-w-[150px] mx-auto">
                               {allowance.carryOnDescriptions.map((desc, i) => (
                                 <div key={i} className="break-words">
                                   {desc}

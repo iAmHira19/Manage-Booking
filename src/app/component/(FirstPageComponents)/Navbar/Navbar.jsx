@@ -28,6 +28,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Image from "next/image";
+import QatarLanguageSelector from "@/components/ui/QatarLanguageSelector";
 
 const Navbar = ({ isMobile }) => {
   const router = useRouter();
@@ -67,7 +68,6 @@ const Navbar = ({ isMobile }) => {
   const [countries, setCountries] = useState([]);
   const dropdownRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [language, setLanguage] = useState("ENG_UK");
   let googleWasUsed = false;
   // useEffects
   useEffect(() => {
@@ -355,102 +355,25 @@ const Navbar = ({ isMobile }) => {
     const map = {
       USD: "/img/Flags/united-states-of-america-flag-png-large.png",
       PKR: "/img/Flags/pakistan-flag-png-large.png",
-      EUR: "/img/Flags/europe-flag-jpg-xl.jpg",
-      GBP: "/img/Flags/united-kingdom-flag-png-large.png",
-    };
-    return map[String(iso || "").toUpperCase()] || "/img/Flags/united-kingdom-flag-png-large.png";
   };
+  return map[String(iso || "").toUpperCase()] || "/img/Flags/united-kingdom-flag-png-large.png";
+};
 
-  // Helper: map language selection to flag image in public folder
-  const getLangFlagSrc = (lang) => {
-    const map = {
-      ENG_UK: "/img/Flags/united-kingdom-flag-png-large.png",
-      ENG_US: "/img/Flags/united-states-of-america-flag-png-large.png",
-      ENG_PK: "/img/Flags/pakistan-flag-png-large.png",
-      AR: "/img/Flags/saudi-arabia-flag-png-large.png",
-    };
-    return map[String(lang || "ENG_UK")] || "/img/Flags/united-kingdom-flag-png-large.png";
-  };
-
-  return (
-    <>
-      <Toaster />
-      <ul
-        className={`list-none ${
-          isMobile ? "flex flex-col gap-4" : "flex gap-8"
-        } font-gotham`}
-      >
-        <li >
+return (
+  <>
+    <Toaster />
+    <div className="flex items-center justify-between w-full">
+      <ul className={`list-none flex items-center gap-8 font-gotham`}>
+        <li className="flex items-center">
           <Link
             href={isSignedIn ? "/manage-booking" : "/manage_booking"}
-            className="text-blue-900 text-base font-gotham uppercase"
+            className="text-blue-900 text-base font-gotham uppercase hover:text-orange-500 transition-colors duration-200 whitespace-nowrap"
           >
             Manage Booking
           </Link>
         </li>
-        {/* Currency removed from Navbar (now available on the search results page form only) */}
-        <li className={`relative group`} ref={dropdownRef}>
-          <Link
-            href="#"
-            onClick={(e) => handleToggle("Language", e)}
-            className="text-blue-900 text-base flex items-center font-gotham uppercase"
-          >
-            <span className="flex items-center gap-2">
-              <span>LANGUAGE</span>
-              <Image src={getLangFlagSrc(language)} alt={language} width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-            </span>
-          </Link>
-          <ul
-            className={`absolute bg-blue-900 gap-2 py-2 rounded top-8 -left-auto lg:-left-8 min-w-40 items-center ${
-              openDropdown === "Language" ? "opacity-100 visible flex" : "opacity-0 invisible"
-            } justify-center flex-col shadow-md transition-all duration-300`}
-          >
-            <li className="w-full text-center block hover:bg-orange-500">
-              <button
-                type="button"
-                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
-                onClick={() => {
-                  setLanguage("ENG_UK");
-                  setOpenDropdown(null);
-                }}
-              >
-                <Image src={getLangFlagSrc("ENG_UK")} alt="ENG_UK" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-                <span>ENG (UK)</span>
-              </button>
-            </li>
-            <li className="w-full text-center block hover:bg-orange-500">
-              <button
-                type="button"
-                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
-                onClick={() => {
-                  setLanguage("ENG_US");
-                  setOpenDropdown(null);
-                }}
-              >
-                <Image src={getLangFlagSrc("ENG_US")} alt="ENG_US" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-                <span>ENG (US)</span>
-              </button>
-            </li>
-            <li className="w-full text-center block hover:bg-orange-500">
-              <button
-                type="button"
-                className="w-full text-base font-gotham flex items-center justify-center text-white px-1 py-2 gap-2 uppercase"
-                onClick={() => {
-                  setLanguage("ENG_PK");
-                  setOpenDropdown(null);
-                }}
-              >
-                <Image src={getLangFlagSrc("ENG_PK")} alt="ENG_PK" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-                <span>ENG (PK)</span>
-              </button>
-            </li>
-            <li className="w-full text-center block px-1 py-2 opacity-60 cursor-not-allowed">
-              <span className="w-full text-base font-gotham flex items-center justify-center text-white gap-2 uppercase">
-                <Image src={getLangFlagSrc("AR")} alt="AR" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
-                <span>Arabic (AR)</span>
-              </span>
-            </li>
-          </ul>
+        <li className="flex items-center">
+          <QatarLanguageSelector />
         </li>
         <li
           className={`relative group ${!isSignedIn || !displayUsername ? "inline-block" : "hidden"}`}
@@ -462,7 +385,7 @@ const Navbar = ({ isMobile }) => {
               e.preventDefault();
               router.push("/auth/signin");
             }}
-            className="text-blue-900 text-base flex items-center font-gotham uppercase"
+            className="text-blue-900 text-base flex items-center font-gotham uppercase whitespace-nowrap"
           >
             <FaLock className="mr-1" /> Log In <MdArrowDropDown />
           </Link>
@@ -690,6 +613,7 @@ const Navbar = ({ isMobile }) => {
           </ul>
         </li>
       </ul>
+    </div>
 
       {/* =================================================== Modals ====================================================== */}
 

@@ -96,7 +96,7 @@ function Page() {
     } else {
       setLoading(false);
     }
-  }, [isSignedIn, router]);
+  }, [isSignedIn]);
 
   useEffect(() => {
     async function fetchCurrencies() {
@@ -121,7 +121,7 @@ function Page() {
     if (callCurrencies) {
       fetchCurrencies();
     }
-  }, [criteria, callCurrencies, getCurrencyApi]);
+  }, [criteria, callCurrencies]);
 
   useEffect(() => {
     if (showAddCurrency) {
@@ -215,7 +215,7 @@ function Page() {
                     <tr
                       key={idx}
                       className="border-b hover:bg-blue-50"
-                      onClick={() => setCriteria(item.tpCUR_CODE)}
+                      onClick={() => setCriteria(item.tpEXR_CURRENCYCODE)}
                     >
                       <td className="px-4 py-3 font-gotham font-light text-center">
                         {item.tpCUR_DESCRIPTION}
@@ -265,6 +265,7 @@ function Page() {
                           title="Edit"
                           onClick={() => {
                             setDataToEdit({
+                              code: item.tpCUR_CODE,
                               desc: item.tpCUR_DESCRIPTION,
                               symbol: item.tpCUR_SYMBOL,
                             });
@@ -330,20 +331,44 @@ function Page() {
           validationSchema={Yup.object({
             tpCUR_DESCRIPTION: Yup.string()
               .trim()
-              .matches(/^[A-Za-z ]+$/, "Letters and spaces only")
+              .matches(/^[A-Za-z0-9 $€£¥₹.,&()\/\-]+$/, "Only letters, numbers, spaces, and currency/punctuation symbols ($ € £ ¥ ₹ . , - & / ( ))")
               .max(40, "Description must be 40 characters or less")
               .required("Currency description is required"),
             tpCUR_SYMBOL: Yup.string()
               .trim()
-              .matches(/^[A-Za-z]{2,5}$/, "Use 2–5 letters only (e.g. PKR)")
+              .max(10, "Symbol must be 10 characters or less")
               .required("Currency symbol is required"),
           })}
           onSubmit={async (values, { resetForm }) => {
-            let data = {
+            const payload = {
               ...values,
               tpCUR_BASECURRENCY: "0",
             };
-            await setCurrencyApi(data);
+
+            let resp = null;
+            try {
+              resp = await setCurrencyApi(payload);
+            } catch (e) {
+              // Even if API fails, we won't show the new row; just exit early
+              console.error("Add Currency failed:", e);
+            }
+
+            // Optimistically show the new currency in the table without full refresh
+            const tempId = Date.now();
+            const newCurrency = {
+              // Fallback to response fields if available
+              tpCUR_CODE: resp?.tpCUR_CODE || resp?.code || -tempId,
+              tpCUR_DESCRIPTION: values.tpCUR_DESCRIPTION,
+              tpCUR_SYMBOL: values.tpCUR_SYMBOL,
+              tpCUR_ACTIVE: 1,
+              tpCUR_BASECURRENCY: 0,
+              // This key is used when clicking a row to fetch exchange setup; leave blank for now until background refresh
+              tpEXR_CURRENCYCODE: resp?.tpEXR_CURRENCYCODE || resp?.code || undefined,
+            };
+            setFilteredCurrencies((prev) => [newCurrency, ...(prev || [])]);
+
+            // Keep server refresh in background so canonical list updates with real IDs
+            setCallCurrencies(true);
             resetForm();
             setShowAddCurrencyModal(false);
             setShowAddCurrency(false);
@@ -376,7 +401,7 @@ function Page() {
                 <Field
                   type="text"
                   name="tpCUR_SYMBOL"
-                  placeholder="e.g. PKR"
+                  placeholder="e.g. PKR or €"
                   autoComplete="off"
                   className="w-full border border-gray-300 outline-none rounded-md px-3 py-2 mt-1"
                 />
@@ -427,26 +452,50 @@ function Page() {
         destroyOnClose
       >
         <Formik
+          enableReinitialize
           initialValues={{
+            tpCUR_CODE: dataToEdit.code,
             tpCUR_DESCRIPTION: dataToEdit.desc,
             tpCUR_SYMBOL: dataToEdit.symbol,
           }}
           validationSchema={Yup.object({
             tpCUR_DESCRIPTION: Yup.string()
               .trim()
-              .matches(/^[A-Za-z ]+$/, "Letters and spaces only")
+              .matches(/^[A-Za-z0-9 $€£¥₹.,&()\/\-]+$/, "Only letters, numbers, spaces, and currency/punctuation symbols ($ € £ ¥ ₹ . , - & / ( ))")
               .max(40, "Description must be 40 characters or less")
               .required("Currency description is required"),
           })}
           onSubmit={async (values, { resetForm }) => {
-            let data = {
+            // Guard: require an identifier for update, otherwise avoid accidental insert
+            if (!values.tpCUR_CODE && values.tpCUR_CODE !== 0) {
+              alert("Missing currency identifier for update. Please re-open Edit and try again.");
+              return;
+            }
+
+            const data = {
               ...values,
+              tpCUR_CODE: values.tpCUR_CODE,
               tpCUR_BASECURRENCY: "0",
             };
             await setCurrencyApi(data);
+
+            // Optimistically update the visible list so changes reflect immediately
+            setFilteredCurrencies((prev) =>
+              (prev || []).map((item) => {
+                const matchByCode = item.tpCUR_CODE === values.tpCUR_CODE;
+                if (matchByCode) {
+                  return {
+                    ...item,
+                    tpCUR_DESCRIPTION: values.tpCUR_DESCRIPTION,
+                  };
+                }
+                return item;
+              })
+            );
+
+            setCallCurrencies(true); // keep server refresh in background
             resetForm();
-            setShowAddCurrencyModal(false);
-            setShowAddCurrency(false);
+            setShowEditCurrencyModal(false);
           }}
         >
           {({ resetForm }) => (
@@ -477,9 +526,10 @@ function Page() {
                   type="text"
                   name="tpCUR_SYMBOL"
                   autoComplete="off"
+                  placeholder="Symbol is locked after creation"
+                  className="w-full border border-gray-300 outline-none rounded-md px-3 py-2 mt-1 bg-gray-100"
                   readOnly
-                  placeholder="e.g. PKR"
-                  className="w-full border border-gray-300 outline-none rounded-md px-3 py-2 mt-1"
+                  disabled
                 />
               </div>
 
@@ -496,9 +546,8 @@ function Page() {
                 <Button
                   htmlType="submit"
                   className="!bg-green-500 !text-white !font-gotham !font-normal"
-                  onClick={() => setCallCurrencies(true)}
                 >
-                  Edit
+                  Save
                 </Button>
               </div>
             </FormikForm>

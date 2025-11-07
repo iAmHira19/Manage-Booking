@@ -4,6 +4,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* RTL Support */
+.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Fix for Ant Design components in RTL */
+.rtl .ant-menu,
+.rtl .ant-dropdown,
+.rtl .ant-picker,
+.rtl .ant-select,
+.rtl .ant-input,
+.rtl .ant-btn,
+.rtl .ant-form-item-label {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+.rtl .ant-col {
+  float: right !important;
+}
+
+/* Fix for form items in RTL */
+.rtl .ant-form-item-label {
+  text-align: right !important;
+}
+
+/* Fix for input groups */
+.rtl .ant-input-group-addon:first-child {
+  border-radius: 0 4px 4px 0 !important;
+}
+
+.rtl .ant-input-group-addon:last-child {
+  border-radius: 4px 0 0 4px !important;
+}
+
+/* Fix for dropdown menus */
+.rtl .ant-dropdown-menu-item,
+.rtl .ant-dropdown-menu-submenu-title {
+  text-align: right;
+  direction: rtl;
+}
+
+/* Fix for modals */
+.rtl .ant-modal-header,
+.rtl .ant-modal-footer {
+  text-align: left;
+  direction: rtl;
+}
+
+.rtl .ant-modal-close {
+  right: auto;
+  left: 0;
+}
+
+/* Fix for table headers */
+.rtl .ant-table-thead > tr > th {
+  text-align: right;
+}
+
+/* Fix for form items with icons */
+.rtl .ant-input-affix-wrapper .ant-input-prefix,
+.rtl .ant-input-affix-wrapper .ant-input-suffix {
+  margin-right: 0;
+  margin-left: 4px;
+}
+
 /* styles/globals.css */
 
 @font-face {

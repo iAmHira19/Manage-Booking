@@ -30,10 +30,12 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Desktop Navbar (hide hamburger here) */}
-        <nav className="hidden lg:block">
-          <Navbar isMobile={false} />
-        </nav>
+        <div className="flex items-center">
+          {/* Desktop Navbar (hide hamburger here) */}
+          <nav className="hidden lg:block">
+            <Navbar isMobile={false} />
+          </nav>
+        </div>
 
         {/* Mobile Hamburger Icon */}
         <div className="lg:hidden">
