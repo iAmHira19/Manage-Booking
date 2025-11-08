@@ -363,7 +363,7 @@ return (
   <>
     <Toaster />
     <div className="flex items-center justify-between w-full">
-      <ul className={`list-none flex items-center gap-8 font-gotham`}>
+      <ul className={`list-none flex items-center gap-4 font-gotham`}>
         <li className="flex items-center">
           <Link
             href={isSignedIn ? "/manage-booking" : "/manage_booking"}

@@ -3,10 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import TermsSidebar from "@/components/TermsSidebar";
-import { Upload, ChevronDown, Mail, Phone, FileText, MapPin, Eye, Send, CheckCircle, AlertCircle, X } from "lucide-react";
+import { Upload, Mail, Phone, FileText, MapPin, Eye, Send, CheckCircle, AlertCircle, X } from "lucide-react";
 
 export default function BookingDetailsPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function BookingDetailsPage() {
 
   // State for enhanced functionality
   const [bookingContext, setBookingContext] = useState(null);
-  const [showEditDropdown, setShowEditDropdown] = useState(false);
+  const [showEditPopup, setShowEditPopup] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editType, setEditType] = useState("");
   const [editData, setEditData] = useState({});
@@ -299,21 +300,23 @@ const fetchItineraryData = async (pnr) => {
     if (passenger) {
       switch (type) {
         case "Email":
-          existingData.newEmail = "";
+          existingData.newEmail = ""; // Always start with empty email
           break;
         case "Phone Number":
-          existingData.newPhone = "";
+          existingData.newPhone = ""; // Always start with empty phone
           break;
         case "Travel Document":
-          existingData.newDocumentNumber = "";
-          existingData.newExpiryDate = "";
+          existingData.newDocumentNumber = passenger.documentNumber || "";
+          existingData.newExpiryDate = passenger.documentExpiry || "";
+          existingData.documentType = passenger.documentType || "passport";
           break;
         case "Address":
-          existingData.firstName = passenger.firstName || "";
-          existingData.lastName = passenger.lastName || "";
-          existingData.newPhone = "";
-          existingData.newPassportNumber = "";
-          existingData.newPassportExpiry = "";
+          existingData.addressLine1 = passenger.address?.line1 || "";
+          existingData.addressLine2 = passenger.address?.line2 || "";
+          existingData.street = passenger.address?.street || "";
+          existingData.city = passenger.address?.city || "";
+          existingData.country = passenger.address?.country || "Pakistan";
+          existingData.postalCode = passenger.address?.postalCode || "";
           break;
       }
     }
@@ -340,8 +343,8 @@ const fetchItineraryData = async (pnr) => {
         break;
 
       case "Phone Number":
-        if (!editData.newPhone || !/^[\+]?[1-9][\d]{0,15}$/.test(editData.newPhone.replace(/[\s\-\(\)]/g, ''))) {
-          errors.newPhone = "Please enter a valid phone number";
+        if (!editData.newPhone || !/^\+?[0-9]{11}$/.test(editData.newPhone)) {
+          errors.newPhone = "Please enter a valid 11-digit phone number";
         }
         break;
 
@@ -354,6 +357,7 @@ const fetchItineraryData = async (pnr) => {
         } else {
           const expiry = new Date(editData.newExpiryDate);
           const today = new Date();
+          today.setHours(0, 0, 0, 0);
           if (expiry <= today) {
             errors.newExpiryDate = "Document must not be expired";
           }
@@ -361,26 +365,20 @@ const fetchItineraryData = async (pnr) => {
         break;
 
       case "Address":
-        if (!editData.firstName || editData.firstName.trim().length < 2) {
-          errors.firstName = "First name is required and must be at least 2 characters";
+        if (!editData.addressLine1 || editData.addressLine1.trim().length < 5) {
+          errors.addressLine1 = "Address line 1 is required and must be at least 5 characters";
         }
-        if (!editData.lastName || editData.lastName.trim().length < 2) {
-          errors.lastName = "Last name is required and must be at least 2 characters";
+        if (!editData.street || editData.street.trim().length < 3) {
+          errors.street = "Street name is required and must be at least 3 characters";
         }
-        if (!editData.newPhone || !/^[\+]?[1-9][\d]{0,15}$/.test(editData.newPhone.replace(/[\s\-\(\)]/g, ''))) {
-          errors.newPhone = "Please enter a valid phone number";
+        if (!editData.city) {
+          errors.city = "City is required";
         }
-        if (!editData.newPassportNumber || editData.newPassportNumber.length < 3) {
-          errors.newPassportNumber = "Passport number is required and must be at least 3 characters";
+        if (!editData.country) {
+          errors.country = "Country is required";
         }
-        if (!editData.newPassportExpiry) {
-          errors.newPassportExpiry = "Passport expiry date is required";
-        } else {
-          const expiry = new Date(editData.newPassportExpiry);
-          const today = new Date();
-          if (expiry <= today) {
-            errors.newPassportExpiry = "Passport must not be expired";
-          }
+        if (!editData.postalCode || !/^\d{5}$/.test(editData.postalCode)) {
+          errors.postalCode = "Postal code must be 5 digits";
         }
         break;
     }
@@ -400,21 +398,25 @@ const fetchItineraryData = async (pnr) => {
       const updateData = {};
       switch (editType) {
         case "Email":
-          updateData.newEmail = editData.newEmail;
+          updateData.email = editData.newEmail;
           break;
         case "Phone Number":
-          updateData.newPhone = editData.newPhone;
+          updateData.phone = editData.newPhone;
           break;
         case "Travel Document":
-          updateData.newDocumentNumber = editData.newDocumentNumber;
-          updateData.newExpiryDate = editData.newExpiryDate;
+          updateData.documentNumber = editData.newDocumentNumber;
+          updateData.documentExpiry = editData.newExpiryDate;
+          updateData.documentType = editData.documentType;
           break;
         case "Address":
-          updateData.firstName = editData.firstName;
-          updateData.lastName = editData.lastName;
-          updateData.newPhone = editData.newPhone;
-          updateData.newPassportNumber = editData.newPassportNumber;
-          updateData.newPassportExpiry = editData.newPassportExpiry;
+          updateData.address = {
+            line1: editData.addressLine1,
+            line2: editData.addressLine2 || "",
+            street: editData.street,
+            city: editData.city,
+            country: editData.country,
+            postalCode: editData.postalCode
+          };
           break;
       }
 
@@ -453,13 +455,17 @@ const fetchItineraryData = async (pnr) => {
                 case "Travel Document":
                   updatedPassenger.documentNumber = editData.newDocumentNumber;
                   updatedPassenger.documentExpiry = editData.newExpiryDate;
+                  updatedPassenger.documentType = editData.documentType;
                   break;
                 case "Address":
-                  updatedPassenger.firstName = editData.firstName;
-                  updatedPassenger.lastName = editData.lastName;
-                  updatedPassenger.phone = editData.newPhone;
-                  updatedPassenger.documentNumber = editData.newPassportNumber;
-                  updatedPassenger.documentExpiry = editData.newPassportExpiry;
+                  updatedPassenger.address = {
+                    line1: editData.addressLine1,
+                    line2: editData.addressLine2 || "",
+                    street: editData.street,
+                    city: editData.city,
+                    country: editData.country,
+                    postalCode: editData.postalCode
+                  };
                   break;
               }
               return updatedPassenger;
@@ -683,70 +689,89 @@ const fetchItineraryData = async (pnr) => {
                               <td className="py-2 px-3">{passenger.baggage}</td>
                               <td className="py-2 px-3">{passenger.class}</td>
                               <td className="py-2 px-3">
-                                <div className="relative">
-                                  <Button
-                                    onClick={() => handleEditInfo("Email", passenger)}
-                                    className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-4 py-2 text-sm font-medium flex items-center gap-2"
-                                  >
-                                    Edit Info
-                                    <ChevronDown className="w-4 h-4" />
-                                  </Button>
-
-                                  {showEditDropdown === passenger.id && (
-                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999]">
-                                      <div className="py-1">
-                                        <button
-                                          onClick={() => handleEditInfo("Email", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentPassenger(passenger);
+                                    setShowEditPopup(showEditPopup === passenger.id ? null : passenger.id);
+                                  }}
+                                  className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white border-none rounded-md px-4 py-2 text-sm font-medium"
+                                >
+                                  Edit Info
+                                </Button>
+                                
+                                {showEditPopup === passenger.id && (
+                                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                    <div className="bg-white rounded-xl p-6 w-full max-w-3xl">
+                                      <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-lg font-semibold text-gray-900">Edit Passenger Information</h3>
+                                        <button 
+                                          onClick={() => setShowEditPopup(null)}
+                                          className="text-gray-400 hover:text-gray-500"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <Mail className="w-4 h-4 text-gray-600" />
-                                          </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Email</div>
-                                            <div className="text-xs text-gray-500">Update email address</div>
-                                          </div>
+                                          <X className="w-6 h-6" />
                                         </button>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <button
-                                          onClick={() => handleEditInfo("Phone Number", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditInfo("Email", passenger);
+                                            setShowEditPopup(null);
+                                          }}
+                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <Phone className="w-4 h-4 text-gray-600" />
+                                          <div className="p-3 bg-blue-50 rounded-full mb-2">
+                                            <Mail className="w-6 h-6 text-blue-600" />
                                           </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Phone Number</div>
-                                            <div className="text-xs text-gray-500">Update phone number</div>
-                                          </div>
+                                          <span className="font-medium text-gray-900">Email</span>
+                                          <span className="text-xs text-gray-500 mt-1 text-center">Update email address</span>
                                         </button>
+                                        
                                         <button
-                                          onClick={() => handleEditInfo("Travel Document", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200 border-b border-gray-100"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditInfo("Phone Number", passenger);
+                                            setShowEditPopup(null);
+                                          }}
+                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <FileText className="w-4 h-4 text-gray-600" />
+                                          <div className="p-3 bg-green-50 rounded-full mb-2">
+                                            <Phone className="w-6 h-6 text-green-600" />
                                           </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Travel Document</div>
-                                            <div className="text-xs text-gray-500">Update passport/ID details</div>
-                                          </div>
+                                          <span className="font-medium text-gray-900">Phone</span>
+                                          <span className="text-xs text-gray-500 mt-1 text-center">Update phone number</span>
                                         </button>
-                                        <button
-                                          onClick={() => handleEditInfo("Address", passenger)}
-                                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-all duration-200"
+                                        
+                                        <div 
+                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-50 cursor-not-allowed h-full"
                                         >
-                                          <div className="p-2 rounded-full bg-gray-100">
-                                            <MapPin className="w-4 h-4 text-gray-600" />
+                                          <div className="p-3 bg-purple-50 rounded-full mb-2">
+                                            <FileText className="w-6 h-6 text-purple-600" />
                                           </div>
-                                          <div>
-                                            <div className="font-medium text-gray-900">Edit Address</div>
-                                            <div className="text-xs text-gray-500">Update address information</div>
+                                          <span className="font-medium text-gray-900">Document</span>
+                                          <span className="text-xs text-gray-500 mt-1 text-center">Coming soon</span>
+                                        </div>
+                                        
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditInfo("Address", passenger);
+                                            setShowEditPopup(null);
+                                          }}
+                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
+                                        >
+                                          <div className="p-3 bg-amber-50 rounded-full mb-2">
+                                            <MapPin className="w-6 h-6 text-amber-600" />
                                           </div>
+                                          <span className="font-medium text-gray-900">Address</span>
+                                          <span className="text-xs text-gray-500 mt-1 text-center">Update address details</span>
                                         </button>
                                       </div>
                                     </div>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -851,7 +876,7 @@ const fetchItineraryData = async (pnr) => {
                     <span className="text-sm font-medium text-gray-700">Current Email</span>
                   </div>
                   <p className="text-gray-900 bg-white px-3 py-2 rounded border">
-                    {currentPassenger?.email || "No email on record"}
+                    {currentPassenger?.email || ""}
                   </p>
                 </div>
 
@@ -880,6 +905,24 @@ const fetchItineraryData = async (pnr) => {
                     </p>
                   )}
                 </div>
+                
+                <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={loading}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF6B35] hover:bg-[#E55A2B] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -891,7 +934,7 @@ const fetchItineraryData = async (pnr) => {
                     <span className="text-sm font-medium text-gray-700">Current Phone Number</span>
                   </div>
                   <p className="text-gray-900 bg-white px-3 py-2 rounded border">
-                    {currentPassenger?.phone || "No phone number on record"}
+                    {currentPassenger?.phone || ""}
                   </p>
                 </div>
 
@@ -922,6 +965,24 @@ const fetchItineraryData = async (pnr) => {
                   <p className="text-xs text-gray-500 mt-1">
                     Include country code for international numbers
                   </p>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={loading}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF6B35] hover:bg-[#E55A2B] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
                 </div>
               </div>
             )}
@@ -999,185 +1060,152 @@ const fetchItineraryData = async (pnr) => {
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-purple-500">
                   <div className="flex items-center gap-3 mb-3">
-                    <MapPin className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Current Address Information</span>
-                  </div>
-                  <div className="bg-white rounded border p-3 space-y-2 text-sm">
-                    <p><span className="font-medium">Name:</span> {currentPassenger?.firstName} {currentPassenger?.lastName}</p>
-                    <p><span className="font-medium">Phone:</span> {currentPassenger?.phone || "Not specified"}</p>
-                    <p><span className="font-medium">Document:</span> {currentPassenger?.documentNumber || "Not specified"}</p>
-                    <p><span className="font-medium">Document Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">Address Information</h4>
+                      <p className="text-sm text-gray-600">Please provide complete and accurate address details</p>
+                    </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      First Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.firstName || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, firstName: e.target.value });
-                        if (formErrors.firstName) {
-                          setFormErrors({ ...formErrors, firstName: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.firstName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter first name"
-                    />
-                    {formErrors.firstName && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.firstName}
-                      </p>
-                    )}
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B35]"></div>
+                    <span className="ml-2 text-gray-600">Saving changes...</span>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Last Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.lastName || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, lastName: e.target.value });
-                        if (formErrors.lastName) {
-                          setFormErrors({ ...formErrors, lastName: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.lastName ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter last name"
-                    />
-                    {formErrors.lastName && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.lastName}
-                      </p>
-                    )}
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 1 *
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.addressLine1 || ''}
+                        onChange={(e) => setEditData({...editData, addressLine1: e.target.value})}
+                        className={`w-full px-3 py-2 border rounded-md ${formErrors.addressLine1 ? 'border-red-500' : 'border-gray-300'}`}
+                        placeholder="House/Flat number, Building"
+                      />
+                      {formErrors.addressLine1 && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.addressLine1}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 2
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.addressLine2 || ''}
+                        onChange={(e) => setEditData({...editData, addressLine2: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        placeholder="Apartment, suite, unit, etc. (optional)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Street *
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.street || ''}
+                        onChange={(e) => setEditData({...editData, street: e.target.value})}
+                        className={`w-full px-3 py-2 border rounded-md ${formErrors.street ? 'border-red-500' : 'border-gray-300'}`}
+                        placeholder="Street name"
+                      />
+                      {formErrors.street && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.street}</p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          City *
+                        </label>
+                        <select
+                          value={editData.city || ''}
+                          onChange={(e) => setEditData({...editData, city: e.target.value})}
+                          className={`w-full px-3 py-2 border rounded-md ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
+                        >
+                          <option value="">Select City</option>
+                          <option value="Karachi">Karachi</option>
+                          <option value="Lahore">Lahore</option>
+                          <option value="Islamabad">Islamabad</option>
+                          <option value="Rawalpindi">Rawalpindi</option>
+                          <option value="Peshawar">Peshawar</option>
+                          <option value="Quetta">Quetta</option>
+                          <option value="Faisalabad">Faisalabad</option>
+                          <option value="Multan">Multan</option>
+                        </select>
+                        {formErrors.city && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Country *
+                        </label>
+                        <select
+                          value={editData.country || 'Pakistan'}
+                          onChange={(e) => setEditData({...editData, country: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                          <option value="Pakistan">Pakistan</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Postal Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.postalCode || ''}
+                        onChange={(e) => {
+                          // Only allow numbers and limit to 5 digits
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                          setEditData({...editData, postalCode: value});
+                        }}
+                        className={`w-full px-3 py-2 border rounded-md ${formErrors.postalCode ? 'border-red-500' : 'border-gray-300'}`}
+                        placeholder="e.g. 54000"
+                        maxLength={5}
+                      />
+                      {formErrors.postalCode ? (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.postalCode}</p>
+                      ) : (
+                        <p className="mt-1 text-xs text-gray-500">5-digit postal code</p>
+                      )}
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={editData.newPhone || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPhone: e.target.value });
-                        if (formErrors.newPhone) {
-                          setFormErrors({ ...formErrors, newPhone: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPhone ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter phone number"
-                    />
-                    {formErrors.newPhone && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPhone}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Passport Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editData.newPassportNumber || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPassportNumber: e.target.value });
-                        if (formErrors.newPassportNumber) {
-                          setFormErrors({ ...formErrors, newPassportNumber: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPassportNumber ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      placeholder="Enter passport number"
-                    />
-                    {formErrors.newPassportNumber && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPassportNumber}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Passport Expiry Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={editData.newPassportExpiry || ""}
-                      onChange={(e) => {
-                        setEditData({ ...editData, newPassportExpiry: e.target.value });
-                        if (formErrors.newPassportExpiry) {
-                          setFormErrors({ ...formErrors, newPassportExpiry: "" });
-                        }
-                      }}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 ${
-                        formErrors.newPassportExpiry ? 'border-red-500' : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                    />
-                    {formErrors.newPassportExpiry && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {formErrors.newPassportExpiry}
-                      </p>
-                    )}
-                  </div>
+                )}
+              
+                <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditModalOpen(false);
+                      setFormErrors({});
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={loading}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF6B35] hover:bg-[#E55A2B] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B35] disabled:opacity-50"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
                 </div>
               </div>
             )}
-
-            <div className="flex gap-3 mt-6 px-6 pb-6">
-              <Button
-                onClick={handleSaveEdit}
-                disabled={loading}
-                className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-6 py-2 rounded-md font-medium text-sm flex-1 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditModalOpen(false);
-                  setFormErrors({});
-                }}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-medium text-sm flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
           </div>
         </div>,
         typeof window !== 'undefined' ? document.body : null
       )}
 
       {/* Ticket Modal */}
-      {ticketModalOpen && (
+      {ticketModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100000] p-4">
           <div className="bg-white w-full max-w-5xl h-[85vh] rounded-lg overflow-hidden shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b">
@@ -1229,7 +1257,8 @@ const fetchItineraryData = async (pnr) => {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        typeof window !== 'undefined' ? document.body : null
       )}
     </div>
   );

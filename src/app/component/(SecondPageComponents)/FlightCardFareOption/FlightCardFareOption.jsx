@@ -630,7 +630,7 @@ function FlightCardFareOption(props) {
           <Button
             type="button"
             loading={props.buttonLoading}
-            className={`!rounded !bg-orange-500 !text-white !w-full !mt-auto !px-2 !CT:px-6 !CT:py-2 !inline-block !text-xs font-gotham font-light lg:!text-base ${
+            className={`!rounded !bg-orange-500 !text-white !w-full !mt-auto !font-bold px-1 sm:px-4 CT:px-7 xl:px-12 py-2 sm:py-3 text-[10px] sm:text-xs CT:text-sm lg:text-base ${
               props.disableButton ? "!cursor-not-allowed" : "!pointer"
             }`}
             onClick={() => {

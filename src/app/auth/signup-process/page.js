@@ -133,7 +133,15 @@ export default function SignUpPage() {
   });
 
   const handleFormikSubmit = async (values, { setSubmitting }) => {
+    // Prevent multiple submissions
+    if (loading || signupSuccess) {
+      setSubmitting(false);
+      return;
+    }
+
     setLoading(true);
+    setSubmitting(true);
+    
     try {
       const payload = {
         FirstName: values.firstName,
@@ -144,17 +152,44 @@ export default function SignUpPage() {
         Password: String(values.password || "").trim(),
         UserName: `${values.firstName}${values.lastName}`.trim() || values.email,
         UserType: "CONSUMER",
+        title: values.title,
+        day: values.day,
+        month: values.month,
+        year: values.year,
+        language: values.language,
+        countryCode: values.countryCode,
+        mobile: values.mobile,
+        invite: values.invite
       };
+      
       const res = await getUserSignUp(payload);
       const ok = !!res && (res.success === true || res.status === 200 || res.code === 200 || res.message === "Success" || Object.keys(res || {}).length > 0);
+      
       if (ok) {
         setSignupSuccess(true);
-        toast.success("Account created successfully. Please log in.");
+        toast.success("Account created successfully. Logging you in...");
+        
+        // Auto-login the user after successful signup
+        try {
+          await signInFn(values.email, values.password);
+          router.push('/');
+        } catch (loginErr) {
+          console.error('Auto-login failed:', loginErr);
+          // Even if auto-login fails, the account was created successfully
+          toast.success("Account created successfully! Please log in.");
+        }
       } else {
-        toast.error(res?.message || "Sign up failed, please try again");
+        const errorMsg = res?.message || "Sign up failed, please try again";
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (err) {
-      toast.error(err?.message || "Sign up failed");
+      console.error('Signup error:', err);
+      if (!err.message.includes("Sign up failed")) {
+        toast.error(err?.message || "An error occurred during signup");
+      }
+      setSignupSuccess(false);
+      throw err; // Re-throw to let Formik know the submission failed
     } finally {
       setLoading(false);
       setSubmitting(false);
@@ -200,149 +235,157 @@ export default function SignUpPage() {
           >
             {({ values, handleChange, handleBlur, handleSubmit, isSubmitting, setFieldValue }) => (
               <Form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4" autoComplete="off">
-            <div className="md:col-span-3">
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Email <span className="text-red-600">*</span></label>
-              <input
-                type="email"
-                name="email"
-                value={values.email}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="off"
-                readOnly={false}
-                ref={emailRef}
-                className="w-full border border-slate-300 rounded px-3 py-2"
-              />
-              <ErrorMessage name="email" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Email <span className="text-red-600">*</span></label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={values.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
+                    readOnly={false}
+                    ref={emailRef}
+                    className="w-full border border-slate-300 rounded px-3 py-2"
+                  />
+                  <ErrorMessage name="email" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
 
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Title</label>
-              <select name="title" value={values.title} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2">
-                {['Mr','Mrs','Ms','Dr'].map((t)=> <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">First name <span className="text-red-600">*</span></label>
-              <input ref={firstNameRef} name="firstName" value={values.firstName} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="firstName" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Last name <span className="text-red-600">*</span></label>
-              <input ref={lastNameRef} name="lastName" value={values.lastName} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="lastName" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Title</label>
+                  <select name="title" value={values.title} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2">
+                    {['Mr','Mrs','Ms','Dr'].map((t)=> <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">First name <span className="text-red-600">*</span></label>
+                  <input ref={firstNameRef} name="firstName" value={values.firstName} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="firstName" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Last name <span className="text-red-600">*</span></label>
+                  <input ref={lastNameRef} name="lastName" value={values.lastName} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="lastName" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
 
-            <div className="md:col-span-3">
-              <p className="text-xs text-slate-500">Your name must be entered in English as it appears on your passport.</p>
-            </div>
+                <div className="md:col-span-3">
+                  <p className="text-xs text-slate-500">Your name must be entered in English as it appears on your passport.</p>
+                </div>
 
-            <div className="md:col-span-3">
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Password <span className="text-red-600">*</span></label>
-              <div className="flex items-center border border-slate-300 rounded pr-2">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={values.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  required
-                  autoComplete="new-password"
-                  readOnly={false}
-                  ref={passwordRef}
-                  className="w-full rounded px-3 py-2 outline-none border-0"
-                />
-                {showPassword ? (
-                  <IoEyeOffOutline className="cursor-pointer text-base" onClick={() => setShowPassword(false)} />
-                ) : (
-                  <IoEyeOutline className="cursor-pointer text-base" onClick={() => setShowPassword(true)} />
-                )}
-              </div>
-              <ErrorMessage name="password" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Password <span className="text-red-600">*</span></label>
+                  <div className="flex items-center border border-slate-300 rounded pr-2">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={values.password}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required
+                      autoComplete="new-password"
+                      readOnly={false}
+                      ref={passwordRef}
+                      className="w-full rounded px-3 py-2 outline-none border-0"
+                    />
+                    {showPassword ? (
+                      <IoEyeOffOutline className="cursor-pointer text-base" onClick={() => setShowPassword(false)} />
+                    ) : (
+                      <IoEyeOutline className="cursor-pointer text-base" onClick={() => setShowPassword(true)} />
+                    )}
+                  </div>
+                  <ErrorMessage name="password" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
 
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Day <span className="text-red-600">*</span></label>
-              <input ref={dayRef} name="day" type="number" min="1" max="31" value={values.day} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="day" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Month <span className="text-red-600">*</span></label>
-              <input ref={monthRef} name="month" type="number" min="1" max="12" value={values.month} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="month" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Year <span className="text-red-600">*</span></label>
-              <input ref={yearRef} name="year" type="number" min="1900" max="2100" value={values.year} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="year" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Day <span className="text-red-600">*</span></label>
+                  <input ref={dayRef} name="day" type="number" min="1" max="31" value={values.day} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="day" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Month <span className="text-red-600">*</span></label>
+                  <input ref={monthRef} name="month" type="number" min="1" max="12" value={values.month} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="month" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Year <span className="text-red-600">*</span></label>
+                  <input ref={yearRef} name="year" type="number" min="1900" max="2100" value={values.year} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="year" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
 
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Country/territory of residence <span className="text-red-600">*</span></label>
-              <select name="country" value={values.country} onChange={(e)=>{handleChange(e);}} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" ref={countryRef}>
-                <option value="">Select country</option>
-                {countries.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <ErrorMessage name="country" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Preferred Language</label>
-              <select name="language" value={values.language} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2">
-                <option value="ENG_UK">English (UK)</option>
-                <option value="ENG_US">English (US)</option>
-                <option value="ENG_PK">English (PK)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Currency <span className="text-red-600">*</span></label>
-              <select name="currency" value={values.currency} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2">
-                {currencies.map((cur) => (
-                  <option key={cur.tpCUR_CODE} value={cur.tpCUR_CODE}>
-                    {cur.tpCUR_SYMBOL || cur.tpCUR_CODE} - {cur.tpCUR_DESCRIPTION || cur.tpCUR_CODE}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Country/territory of residence <span className="text-red-600">*</span></label>
+                  <select name="country" value={values.country} onChange={(e)=>{handleChange(e);}} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2" ref={countryRef}>
+                    <option value="">Select country</option>
+                    {countries.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ErrorMessage name="country" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Preferred Language</label>
+                  <select name="language" value={values.language} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2">
+                    <option value="ENG_UK">English (UK)</option>
+                    <option value="ENG_US">English (US)</option>
+                    <option value="ENG_PK">English (PK)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Currency <span className="text-red-600">*</span></label>
+                  <select name="currency" value={values.currency} onChange={handleChange} onBlur={handleBlur} required className="w-full border border-slate-300 rounded px-3 py-2">
+                    {currencies.map((cur) => (
+                      <option key={cur.tpCUR_CODE} value={cur.tpCUR_CODE}>
+                        {cur.tpCUR_SYMBOL || cur.tpCUR_CODE} - {cur.tpCUR_DESCRIPTION || cur.tpCUR_CODE}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Country code</label>
-              <input name="countryCode" value={values.countryCode} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Mobile number</label>
-              <input ref={mobileRef} name="mobile" value={values.mobile} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-              <ErrorMessage name="mobile" component="p" className="text-red-600 text-xs mt-1" />
-            </div>
+                <div>
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Country code</label>
+                  <input name="countryCode" value={values.countryCode} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Mobile number</label>
+                  <input ref={mobileRef} name="mobile" value={values.mobile} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                  <ErrorMessage name="mobile" component="p" className="text-red-600 text-xs mt-1" />
+                </div>
 
-            <div className="md:col-span-3">
-              <label className="block text-sm font-gotham text-blue-900 mb-1">Invite code (optional)</label>
-              <input name="invite" value={values.invite} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
-            </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-gotham text-blue-900 mb-1">Invite code (optional)</label>
+                  <input name="invite" value={values.invite} onChange={handleChange} onBlur={handleBlur} className="w-full border border-slate-300 rounded px-3 py-2" />
+                </div>
 
-            <div className="md:col-span-3 mt-2 flex flex-col gap-2">
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" />
-                Sign up to receive CherryFlight newsletters and special offers.
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" />
-                I agree to the CherryFlight programme rules and privacy policy.
-              </label>
-            </div>
+                <div className="md:col-span-3 mt-2 flex flex-col gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" />
+                    Sign up to receive CherryFlight newsletters and special offers.
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" />
+                    I agree to the CherryFlight programme rules and privacy policy.
+                  </label>
+                </div>
 
-            <div className="md:col-span-3 mt-4 space-y-3">
-              <button type="submit" disabled={loading || signupSuccess || isSubmitting} className={`w-full bg-orange-500 hover:bg-orange-600 text-white rounded px-4 py-2 font-gotham ${loading || signupSuccess || isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}>
-                {loading ? "Creating account..." : signupSuccess ? "Account created" : isSubmitting ? "Validating..." : "Create an account"}
-              </button>
-              <button type="button" onClick={() => router.push("/auth/signin")} className="w-full text-blue-900 hover:text-blue-700 underline font-gotham text-sm">
-                Back to login
-              </button>
-            </div>
+                <div className="md:col-span-3 mt-4 space-y-3">
+                  <button 
+                    type="submit" 
+                    disabled={loading || signupSuccess || isSubmitting} 
+                    className={`w-full bg-orange-500 hover:bg-orange-600 text-white rounded px-4 py-2 font-gotham transition-colors duration-200 ${
+                      loading || signupSuccess || isSubmitting 
+                        ? "opacity-70 cursor-not-allowed" 
+                        : "hover:bg-orange-600"
+                    }`}
+                  >
+                    {loading ? "Creating account..." : signupSuccess ? "Account created!" : "Create an account"}
+                  </button>
+                  <button type="button" onClick={() => router.push("/auth/signin")} className="w-full text-blue-900 hover:text-blue-700 underline font-gotham text-sm">
+                    Back to login
+                  </button>
+                </div>
               </Form>
             )}
           </Formik>
