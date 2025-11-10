@@ -30,11 +30,41 @@ const Page = () => {
     );
   }
 
+  // Get user data from session storage
+  const userSession = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || '{}') : {};
+
   return (
-    <div
-      className="w-screen flex justify-between gap-x-20 px-4 md:px-10 py-4 md:py-16"
-      onClick={() => console.log("userData: ", userData)}
-    >
+    <div className="w-full px-4 md:px-10 py-4 md:py-8">
+      {/* User Profile Summary */}
+      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+        <h2 className="text-2xl font-gotham font-bold text-blue-900 mb-6">My Profile</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Full Name</p>
+              <p className="text-lg font-gotham text-gray-800">
+                {userSession?.title || ''} {userSession?.firstName || ''} {userSession?.lastName || ''}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Email</p>
+              <p className="text-lg font-gotham text-gray-800">{userSession?.email || 'N/A'}</p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Phone</p>
+              <p className="text-lg font-gotham text-gray-800">
+                {userSession?.countryCode || ''} {userSession?.mobile || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Country</p>
+              <p className="text-lg font-gotham text-gray-800">{userSession?.country || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="w-1/5 hidden">
         <div className="border flex flex-col">
           <div className="w-full">

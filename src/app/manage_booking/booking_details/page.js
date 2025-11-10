@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -15,7 +14,6 @@ export default function BookingDetailsPage() {
   const [logoUrl, setLogoUrl] = useState("/img/logo.png");
   const fileInputRef = useRef(null);
   const detailsRef = useRef(null);
-
   // State for enhanced functionality
   const [bookingContext, setBookingContext] = useState(null);
   const [showEditPopup, setShowEditPopup] = useState(null);
@@ -26,7 +24,6 @@ export default function BookingDetailsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [formErrors, setFormErrors] = useState({});
   const [currentPassenger, setCurrentPassenger] = useState(null);
-
   // API data states
   const [itineraryData, setItineraryData] = useState(null);
   const [passengerData, setPassengerData] = useState([]);
@@ -37,10 +34,10 @@ export default function BookingDetailsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [pnrInput, setPnrInput] = useState("");
   const [priceStructure, setPriceStructure] = useState(null);
-
+  const [updatableItems, setUpdatableItems] = useState([]);
+  const [workbenchId, setWorkbenchId] = useState('');
   // Base URI for API calls
   const BASE_URI = process.env.NEXT_PUBLIC_BASE_URI || "http://localhost:8081";
-
   // Load booking context from session storage
   useEffect(() => {
     const loadBookingData = async () => {
@@ -70,138 +67,155 @@ export default function BookingDetailsPage() {
         setDataLoading(false);
       }
     };
-
     loadBookingData();
   }, []);
-
-const fetchItineraryData = async (pnr) => {
-  setDataLoading(true);
-  setMessage({ type: "", text: "" });
-
-  try {
-    // In production, replace with actual API call
-    const response = await fetch(`${BASE_URI}/api/tp/getItinerary?pnr=${encodeURIComponent(pnr)}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (response.status === 404) {
-      setMessage({ type: "error", text: `PNR ${pnr} not found. Please verify and try again.` });
-      setDataLoading(false);
-      return;
-    }
-    if (!response.ok) {
-      throw new Error(`Failed to fetch itinerary data: ${response.statusText}`);
-    }
-
-    const apiData = await response.json();
-    console.log("Processing API response:", apiData);
-
-    // Parse ItineraryDetails if it's a string
-    let itineraryDetails = apiData.ItineraryDetails;
-    if (typeof itineraryDetails === 'string') {
-      try {
-        itineraryDetails = JSON.parse(itineraryDetails);
-      } catch (e) {
-        console.error("Error parsing ItineraryDetails:", e);
-        throw new Error("Invalid ItineraryDetails format");
+  const fetchItineraryData = async (pnr) => {
+    setDataLoading(true);
+    setMessage({ type: "", text: "" });
+    try {
+      // Fetch itinerary data
+      const itineraryResponse = await fetch(`${BASE_URI}/api/tp/getItinerary?pnr=${encodeURIComponent(pnr)}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (itineraryResponse.status === 404) {
+        setMessage({ type: "error", text: `PNR ${pnr} not found. Please verify and try again.` });
+        setDataLoading(false);
+        return;
       }
-    }
-
-    // Extract key data
-    const pnrValue = apiData.PNR || pnr;
-    const reservationData = itineraryDetails?.ReservationResponse?.Reservation;
-    const travelers = reservationData?.Traveler || [];
-    const priceStructure = apiData.priceStructure || {};
-    const products = reservationData?.Offer?.[0]?.Product || [];
-    const flightSegments = products
-      .map(product => product.FlightSegment?.[0]?.Flight)
-      .filter(Boolean);
-
-    console.log("Extracted data:", {
-      pnr: pnrValue,
-      travelers: travelers.length,
-      flightSegments: flightSegments.length,
-      priceStructure
-    });
-
-    // Process passenger data
-    const processedPassengers = travelers.map((traveler, index) => {
-      const personName = traveler.PersonName || {};
-      const telephone = traveler.Telephone?.[0];
-      const email = traveler.Email?.[0];
-      const travelDoc = traveler.TravelDocument?.[0];
-      const firstFlight = flightSegments[0];
-      const lastFlight = flightSegments[flightSegments.length - 1];
-
-      return {
-        id: traveler.id || `traveler_${index + 1}`,
-        firstName: personName.Given || "Passenger",
-        lastName: personName.Surname || `${index + 1}`,
-        fullName: `${personName.Given || "Passenger"} ${personName.Surname || `${index + 1}`}`.trim(),
-        email: email?.value || "",
-        phone: telephone ? `${telephone.countryAccessCode || ""}${telephone.phoneNumber || ""}`.trim() : "",
-        airlineBookingRef: pnrValue,
-        origin: firstFlight?.Departure?.location || "N/A",
-        destination: lastFlight?.Arrival?.location || "N/A",
-        departureTime: firstFlight ? `${firstFlight.Departure.date}T${firstFlight.Departure.time}` : "",
-        arrivalTime: lastFlight ? `${lastFlight.Arrival.date}T${lastFlight.Arrival.time}` : "",
-        baggage: reservationData?.Offer?.[0]?.TermsAndConditionsFull?.[0]?.BaggageAllowance?.[0]?.Text?.[0] || "Standard",
-        class: products[0]?.PassengerFlight?.[0]?.FlightProduct?.[0]?.cabin || "Economy",
-        documentType: travelDoc ? "passport" : "",
-        documentNumber: travelDoc?.number || "",
-        documentExpiry: travelDoc?.expiryDate || "",
-        address: {}
-      };
-    });
-
-    console.log("Processed passengers:", processedPassengers);
-
-    // Process booking data
-    const processedBooking = {
-      bookingReference: pnrValue,
-      issueDate: reservationData?.Receipt?.[0]?.Confirmation?.Locator?.creationDate || new Date().toISOString().split('T')[0],
-      flightNumber: flightSegments
+      if (!itineraryResponse.ok) {
+        throw new Error(`Failed to fetch itinerary data: ${itineraryResponse.statusText}`);
+      }
+      const apiData = await itineraryResponse.json();
+      console.log("Processing API response:", apiData);
+      // Parse ItineraryDetails if it's a string
+      let itineraryDetails = apiData.ItineraryDetails;
+      if (typeof itineraryDetails === 'string') {
+        try {
+          itineraryDetails = JSON.parse(itineraryDetails);
+        } catch (e) {
+          console.error("Error parsing ItineraryDetails:", e);
+          throw new Error("Invalid ItineraryDetails format");
+        }
+      }
+      // Fetch updatable items from API
+      const updatableResponse = await fetch(`${BASE_URI}/api/tp/getUpdatableItems?pnr=${encodeURIComponent(pnr)}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!updatableResponse.ok) {
+        throw new Error(`Failed to fetch updatable items: ${updatableResponse.statusText}`);
+      }
+      const updatableList = await updatableResponse.json();
+      setUpdatableItems(updatableList || []);
+      const workbenchIdTemp = updatableList[0]?.Key || '';
+      setWorkbenchId(workbenchIdTemp);
+      localStorage.setItem('workbenchId', workbenchIdTemp);
+      localStorage.setItem('updatableItems', JSON.stringify(updatableList));
+      localStorage.setItem('pnr', pnr);
+      console.log('PNR:', pnr);
+      console.log('Workbench ID:', workbenchIdTemp);
+      console.log('Updatable Items:', updatableList);
+      // Extract key data
+      const pnrValue = apiData.PNR || pnr;
+      const reservationData = itineraryDetails?.ReservationResponse?.Reservation;
+      const travelers = reservationData?.Traveler || [];
+      const priceStructure = apiData.priceStructure || {};
+      const products = reservationData?.Offer?.[0]?.Product || [];
+      const flightSegments = products
+        .map(product => product.FlightSegment?.[0]?.Flight)
+        .filter(Boolean);
+      console.log("Extracted data:", {
+        pnr: pnrValue,
+        travelers: travelers.length,
+        flightSegments: flightSegments.length,
+        priceStructure
+      });
+      // Process passenger data
+      const processedPassengers = travelers.map((traveler, index) => {
+        const personName = traveler.PersonName || {};
+        const telephone = traveler.Telephone?.[0];
+        const email = traveler.Email?.[0];
+        const travelDoc = traveler.TravelDocument?.[0];
+        const firstFlight = flightSegments[0];
+        const lastFlight = flightSegments[flightSegments.length - 1];
+        const firstName = personName.Given || "Passenger";
+        const lastName = personName.Surname || String(index + 1);
+        const phoneNumber = telephone ? `${telephone.countryAccessCode || ""}${telephone.phoneNumber || ""}`.trim() : "";
+        const departureTime = firstFlight ? `${firstFlight.Departure.date}T${firstFlight.Departure.time}` : "";
+        const arrivalTime = lastFlight ? `${lastFlight.Arrival.date}T${lastFlight.Arrival.time}` : "";
+        
+        return {
+          id: traveler.id || `traveler_${index + 1}`,
+          firstName: firstName,
+          lastName: lastName,
+          fullName: `${firstName} ${lastName}`.trim(),
+          email: email?.value || "",
+          phone: phoneNumber,
+          airlineBookingRef: pnrValue,
+          origin: firstFlight?.Departure?.location || "N/A",
+          destination: lastFlight?.Arrival?.location || "N/A",
+          departureTime: departureTime,
+          arrivalTime: arrivalTime,
+          baggage: reservationData?.Offer?.[0]?.TermsAndConditionsFull?.[0]?.BaggageAllowance?.[0]?.Text?.[0] || "Standard",
+          class: products[0]?.PassengerFlight?.[0]?.FlightProduct?.[0]?.cabin || "Economy",
+          documentType: travelDoc ? "passport" : "",
+          documentNumber: travelDoc?.number || "",
+          documentExpiry: travelDoc?.expiryDate || "",
+          address: {},
+          updatable: new Set(
+            updatableList
+              .filter(item => item.ValueList.some(v => v.Key === traveler.id))
+              .map(item => item.Value1)
+          ),
+        };
+      });
+      console.log("Processed passengers:", processedPassengers);
+      // Process booking data
+      const flightNumber = flightSegments
         .map(segment => `${segment.carrier || 'XX'}${segment.number || '000'}`)
-        .join(", "),
-      tripType: apiData.TripType?.replace("TripType:", "").trim() || "Unknown",
-      refundable: false,
-      totalPrice: priceStructure.totalPrice || "0",
-      currency: priceStructure.currency || "PKR",
-      adultPrice: priceStructure.adultPrice || "0",
-      adultTax: priceStructure.adultTax || "0",
-    };
-
-    console.log("Processed booking:", processedBooking);
-
-    // Set state
-    setPassengerData(processedPassengers);
-    setBookingData(processedBooking);
-    setPriceStructure(priceStructure);
-    setItineraryData(apiData);
-
-    setMessage({
-      type: "success",
-      text: `Booking data loaded successfully! Found ${processedPassengers.length} passenger(s) and ${flightSegments.length} flight segment(s).`
-    });
-  } catch (error) {
-    console.error("Error processing itinerary data:", error);
-    setMessage({
-      type: "error",
-      text: `Error processing itinerary data: ${error.message || 'Please try again.'}`
-    });
-  } finally {
-    setDataLoading(false);
-  }
-};
-
+        .join(", ");
+      const issueDate = reservationData?.Receipt?.[0]?.Confirmation?.Locator?.creationDate || new Date().toISOString().split('T')[0];
+      const tripType = apiData.TripType?.replace("TripType:", "").trim() || "Unknown";
+      
+      const processedBooking = {
+        bookingReference: pnrValue,
+        issueDate: issueDate,
+        flightNumber: flightNumber,
+        tripType: tripType,
+        refundable: false,
+        totalPrice: priceStructure.totalPrice || "0",
+        currency: priceStructure.currency || "PKR",
+        adultPrice: priceStructure.adultPrice || "0",
+        adultTax: priceStructure.adultTax || "0",
+      };
+      console.log("Processed booking:", processedBooking);
+      // Set state
+      setPassengerData(processedPassengers);
+      setBookingData(processedBooking);
+      setPriceStructure(priceStructure);
+      setItineraryData(apiData);
+      const successMessage = `Booking data loaded successfully! Found ${processedPassengers.length} passenger(s) and ${flightSegments.length} flight segment(s).`;
+      setMessage({
+        type: "success",
+        text: successMessage
+      });
+    } catch (error) {
+      console.error("Error processing itinerary data:", error);
+      setMessage({
+        type: "error",
+        text: `Error processing itinerary data: ${error.message || 'Please try again.'}`
+      });
+    } finally {
+      setDataLoading(false);
+    }
+  };
   // Handle resend ticket email using the correct API endpoint
   const handleResendTicket = async () => {
     if (!bookingContext && !itineraryData) {
       setMessage({ type: "error", text: "Booking context not found" });
       return;
     }
-
     setLoading(true);
     try {
       const pnr = bookingContext?.bookingId || itineraryData?.pnr || bookingData?.bookingReference;
@@ -210,18 +224,14 @@ const fetchItineraryData = async (pnr) => {
         setLoading(false);
         return;
       }
-
       const resendEndpoint = `${BASE_URI}/api/tp/resendTicketDocument`;
       console.log("Resending ticket to:", resendEndpoint, "PNR:", pnr);
-
       const response = await fetch(resendEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pnr),
       });
-
       const text = (await response.text()).trim();
-
       if (response.ok) {
         if (text.includes("Email sent successfully")) {
           setMessage({ type: "success", text: "Email sent successfully!" });
@@ -242,7 +252,6 @@ const fetchItineraryData = async (pnr) => {
       setLoading(false);
     }
   };
-
   // Handle view generated ticket
   const handleViewTicket = async () => {
     try {
@@ -271,14 +280,13 @@ const fetchItineraryData = async (pnr) => {
       setMessage({ type: "error", text: "Error opening ticket PDF" });
     }
   };
-
   const handlePrint = () => {
     try {
       const node = detailsRef.current;
       if (!node) return window.print();
       const printWindow = window.open("", "_blank");
       if (!printWindow) return window.print();
-      printWindow.document.write(`<html><head><title>Print</title><link rel="stylesheet" href="/styles/globals.css" /></head><body>${node.innerHTML}</body></html>`);
+      printWindow.document.write('<html><head><title>Print</title><link rel="stylesheet" href="/styles/globals.css" /></head><body>' + node.innerHTML + '</body></html>');
       printWindow.document.close();
       printWindow.focus();
       setTimeout(() => {
@@ -289,13 +297,14 @@ const fetchItineraryData = async (pnr) => {
       window.print();
     }
   };
-
   // Handle edit info dropdown
   const handleEditInfo = (type, passenger = null) => {
+    if (!passenger.updatable.has(mapTypeToUpdatable(type))) {
+      return; // Do not open if not updatable
+    }
     setEditType(type);
     setCurrentPassenger(passenger);
     setFormErrors({});
-
     const existingData = {};
     if (passenger) {
       switch (type) {
@@ -320,34 +329,42 @@ const fetchItineraryData = async (pnr) => {
           break;
       }
     }
-
     setEditData(existingData);
     setEditModalOpen(true);
-    setShowEditDropdown(false);
+    setShowEditPopup(null);
   };
-
+  const mapTypeToUpdatable = (type) => {
+    switch (type) {
+      case "Email":
+        return "TravelerUpdatableItemEmail";
+      case "Phone Number":
+        return "TravelerUpdatableItemTelephone";
+      case "Address":
+        return "TravelerUpdatableItemPersonName";
+      case "Travel Document":
+        return "TravelerUpdatableItemTravelDocument";
+      default:
+        return "";
+    }
+  };
   // Handle save edit
   const handleSaveEdit = async () => {
     if (!bookingContext && !currentPassenger) {
       setMessage({ type: "error", text: "Booking context or passenger data not found" });
       return;
     }
-
     let errors = {};
-
     switch (editType) {
       case "Email":
         if (!editData.newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.newEmail)) {
           errors.newEmail = "Please enter a valid email address";
         }
         break;
-
       case "Phone Number":
         if (!editData.newPhone || !/^\+?[0-9]{11}$/.test(editData.newPhone)) {
           errors.newPhone = "Please enter a valid 11-digit phone number";
         }
         break;
-
       case "Travel Document":
         if (!editData.newDocumentNumber || editData.newDocumentNumber.length < 3) {
           errors.newDocumentNumber = "Document number is required and must be at least 3 characters";
@@ -363,7 +380,6 @@ const fetchItineraryData = async (pnr) => {
           }
         }
         break;
-
       case "Address":
         if (!editData.addressLine1 || editData.addressLine1.trim().length < 5) {
           errors.addressLine1 = "Address line 1 is required and must be at least 5 characters";
@@ -382,19 +398,15 @@ const fetchItineraryData = async (pnr) => {
         }
         break;
     }
-
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-
     setLoading(true);
     setFormErrors({});
-
     try {
       const pnr = bookingContext?.bookingId || bookingData?.bookingReference;
       const passengerId = currentPassenger?.id;
-
       const updateData = {};
       switch (editType) {
         case "Email":
@@ -419,7 +431,6 @@ const fetchItineraryData = async (pnr) => {
           };
           break;
       }
-
       const response = await fetch(`${BASE_URI}/api/booking/update-info`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -432,14 +443,12 @@ const fetchItineraryData = async (pnr) => {
           lastName: bookingContext?.lastName
         }),
       });
-
       if (response.ok) {
         const result = await response.json();
         setMessage({
           type: "success",
           text: `${editType} updated successfully! ${result.message || ''}`
         });
-
         // Update local passenger data
         if (currentPassenger && passengerData.length > 0) {
           const updatedPassengers = passengerData.map(passenger => {
@@ -474,7 +483,6 @@ const fetchItineraryData = async (pnr) => {
           });
           setPassengerData(updatedPassengers);
         }
-
         // Refetch itinerary to keep in sync with backend
         try {
           if (pnr) {
@@ -483,7 +491,6 @@ const fetchItineraryData = async (pnr) => {
         } catch (e) {
           console.warn("Failed to refresh itinerary after update:", e);
         }
-
         // Close modal
         setEditModalOpen(false);
       } else {
@@ -497,7 +504,6 @@ const fetchItineraryData = async (pnr) => {
       setLoading(false);
     }
   };
-
   // Helper function to format time
   const formatTime = (timeString) => {
     if (!timeString) return "N/A";
@@ -512,7 +518,6 @@ const fetchItineraryData = async (pnr) => {
       return timeString;
     }
   };
-
   // Helper function to format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -527,7 +532,6 @@ const fetchItineraryData = async (pnr) => {
       return dateString;
     }
   };
-
   // Show loading screen while fetching data
   if (dataLoading && !itineraryData) {
     return (
@@ -542,11 +546,10 @@ const fetchItineraryData = async (pnr) => {
       </div>
     );
   }
-
   return (
-    <div className="flex flex-col w-full">
-      <div className="flex w-full justify-between bg-[#f8f9fa] relative min-h-screen gap-x-8">
-
+    <div className="relative">
+      <div className="flex flex-col w-full">
+        <div className="flex w-full justify-between bg-[#f8f9fa] relative min-h-screen gap-x-8">
         {/* Sidebar */}
         <TermsSidebar
           active={activeMenuItem}
@@ -560,11 +563,9 @@ const fetchItineraryData = async (pnr) => {
           ]}
           className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col py-4"
         />
-
         {/* Main Content */}
         <div className="flex-1 flex flex-col items-center" ref={detailsRef}>
           <div className="max-w-6xl w-full px-6 py-10">
-
             {/* Message Display */}
             {message.text && (
               <div className={`mb-4 p-4 rounded-md ${
@@ -581,13 +582,11 @@ const fetchItineraryData = async (pnr) => {
                 </button>
               </div>
             )}
-
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm">
               <CardContent className="px-6 py-6">
                 <h1 className="text-[28px] font-bold text-[#FF6B35] mb-6 tracking-wide uppercase text-left">
                   {activeMenuItem}
                 </h1>
-
                 {/* Personal Info Section */}
                 <div className="mb-8">
                   <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
@@ -596,7 +595,6 @@ const fetchItineraryData = async (pnr) => {
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
                     </span>
                   </h2>
-
                   <div className="overflow-x-auto bg-white">
                     <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] text-[13px]">
                       <thead className="bg-[#153E7E] text-white text-[13px] font-medium uppercase">
@@ -635,7 +633,6 @@ const fetchItineraryData = async (pnr) => {
                     </table>
                   </div>
                 </div>
-
                 {/* Trip Details Section */}
                 <div>
                   <h2 className="text-[18px] font-semibold text-[#2E4A6B] tracking-wide relative inline-block mb-3 text-center w-full">
@@ -644,7 +641,6 @@ const fetchItineraryData = async (pnr) => {
                       <span className="absolute bottom-[-4px] left-0 right-0 h-[3px] bg-[#FF6B35] rounded"></span>
                     </span>
                   </h2>
-
                   <div className="overflow-x-auto bg-white">
                     <table className="w-full border border-gray-200 rounded-lg overflow-hidden text-[#2E4A6B] text-[13px]">
                       <thead className="bg-[#153E7E] text-white text-[13px] font-medium uppercase">
@@ -688,7 +684,7 @@ const fetchItineraryData = async (pnr) => {
                               <td className="py-2 px-3">{formatTime(passenger.arrivalTime)}</td>
                               <td className="py-2 px-3">{passenger.baggage}</td>
                               <td className="py-2 px-3">{passenger.class}</td>
-                              <td className="py-2 px-3">
+                              <td className="py-2 px-3 relative">
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -699,79 +695,6 @@ const fetchItineraryData = async (pnr) => {
                                 >
                                   Edit Info
                                 </Button>
-                                
-                                {showEditPopup === passenger.id && (
-                                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                                    <div className="bg-white rounded-xl p-6 w-full max-w-3xl">
-                                      <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-lg font-semibold text-gray-900">Edit Passenger Information</h3>
-                                        <button 
-                                          onClick={() => setShowEditPopup(null)}
-                                          className="text-gray-400 hover:text-gray-500"
-                                        >
-                                          <X className="w-6 h-6" />
-                                        </button>
-                                      </div>
-                                      
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditInfo("Email", passenger);
-                                            setShowEditPopup(null);
-                                          }}
-                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
-                                        >
-                                          <div className="p-3 bg-blue-50 rounded-full mb-2">
-                                            <Mail className="w-6 h-6 text-blue-600" />
-                                          </div>
-                                          <span className="font-medium text-gray-900">Email</span>
-                                          <span className="text-xs text-gray-500 mt-1 text-center">Update email address</span>
-                                        </button>
-                                        
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditInfo("Phone Number", passenger);
-                                            setShowEditPopup(null);
-                                          }}
-                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
-                                        >
-                                          <div className="p-3 bg-green-50 rounded-full mb-2">
-                                            <Phone className="w-6 h-6 text-green-600" />
-                                          </div>
-                                          <span className="font-medium text-gray-900">Phone</span>
-                                          <span className="text-xs text-gray-500 mt-1 text-center">Update phone number</span>
-                                        </button>
-                                        
-                                        <div 
-                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-50 cursor-not-allowed h-full"
-                                        >
-                                          <div className="p-3 bg-purple-50 rounded-full mb-2">
-                                            <FileText className="w-6 h-6 text-purple-600" />
-                                          </div>
-                                          <span className="font-medium text-gray-900">Document</span>
-                                          <span className="text-xs text-gray-500 mt-1 text-center">Coming soon</span>
-                                        </div>
-                                        
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditInfo("Address", passenger);
-                                            setShowEditPopup(null);
-                                          }}
-                                          className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-full"
-                                        >
-                                          <div className="p-3 bg-amber-50 rounded-full mb-2">
-                                            <MapPin className="w-6 h-6 text-amber-600" />
-                                          </div>
-                                          <span className="font-medium text-gray-900">Address</span>
-                                          <span className="text-xs text-gray-500 mt-1 text-center">Update address details</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                               </td>
                             </tr>
                           ))
@@ -785,32 +708,79 @@ const fetchItineraryData = async (pnr) => {
                       </tbody>
                     </table>
                   </div>
-
-                  <div className="mt-6 flex gap-4 justify-center flex-wrap">
-                    <Button
-                      onClick={handleResendTicket}
-                      disabled={loading}
-                      className="bg-[#FF6B35] hover:bg-[#E55A2B] text-white px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      {loading ? "Sending..." : "Resend Ticket Email"}
-                    </Button>
-                    <Button
-                      onClick={handleViewTicket}
-                      disabled={loading}
-                      className="px-8 py-3 rounded-md font-medium text-sm flex items-center gap-2 bg-[#153E7E] hover:bg-[#0F2F5A] text-white"
-                    >
-                      <Eye className="w-4 h-4" />
-                      {loading ? "Loading..." : "View Ticket"}
-                    </Button>
-                    <Button onClick={handlePrint} className="bg-[#28a745] hover:bg-[#218838] text-white px-8 py-3 rounded-md font-medium text-sm">
-                      Print
-                    </Button>
-                  </div>
+                  {/* Edit Popup - Moved outside the table */}
+                  {showEditPopup && currentPassenger && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-xl p-6 w-full max-w-3xl">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900">Edit Passenger Information</h3>
+                          <button
+                            onClick={() => setShowEditPopup(null)}
+                            className="text-gray-400 hover:text-gray-500"
+                          >
+                            <X className="w-6 h-6" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditInfo("Email", currentPassenger);
+                              setShowEditPopup(null);
+                            }}
+                            disabled={!currentPassenger.updatable.has("TravelerUpdatableItemEmail")}
+                            className={`flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg transition-colors h-full ${!currentPassenger.updatable.has("TravelerUpdatableItemEmail") ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50'}`}
+                          >
+                            <div className="p-3 bg-blue-50 rounded-full mb-2">
+                              <Mail className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Email</span>
+                            <span className="text-xs text-gray-500 mt-1 text-center">Update email address</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditInfo("Phone Number", currentPassenger);
+                              setShowEditPopup(null);
+                            }}
+                            disabled={!currentPassenger.updatable.has("TravelerUpdatableItemTelephone")}
+                            className={`flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg transition-colors h-full ${!currentPassenger.updatable.has("TravelerUpdatableItemTelephone") ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50'}`}
+                          >
+                            <div className="p-3 bg-green-50 rounded-full mb-2">
+                              <Phone className="w-6 h-6 text-green-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Phone</span>
+                            <span className="text-xs text-gray-500 mt-1 text-center">Update phone number</span>
+                          </button>
+                          <div className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-50 cursor-not-allowed h-full">
+                            <div className="p-3 bg-purple-50 rounded-full mb-2">
+                              <FileText className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Document</span>
+                            <span className="text-xs text-gray-500 mt-1 text-center">Coming soon</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditInfo("Address", currentPassenger);
+                              setShowEditPopup(null);
+                            }}
+                            disabled={!currentPassenger.updatable.has("TravelerUpdatableItemAddress")}
+                            className={`flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg transition-colors h-full ${!currentPassenger.updatable.has("TravelerUpdatableItemAddress") ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50'}`}
+                          >
+                            <div className="p-3 bg-amber-50 rounded-full mb-2">
+                              <MapPin className="w-6 h-6 text-amber-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Address</span>
+                            <span className="text-xs text-gray-500 mt-1 text-center">Update address details</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-
             {/* Price Summary Card */}
             <Card className="w-[92%] mx-auto rounded-md overflow-hidden border border-gray-200 shadow-sm mt-6">
               <CardContent className="px-6 py-6">
@@ -830,10 +800,10 @@ const fetchItineraryData = async (pnr) => {
             </Card>
           </div>
         </div>
+        </div>
       </div>
-
-      {/* Edit Modal (Portal) */}
-      {editModalOpen && createPortal(
+      
+      {typeof window !== 'undefined' && editModalOpen && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[800px] mx-4 max-h-[85vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-[#153E7E] to-[#2E4A6B] px-5 py-3 rounded-t-2xl">
@@ -859,7 +829,6 @@ const fetchItineraryData = async (pnr) => {
                 </button>
               </div>
             </div>
-
             {currentPassenger && (
               <div className="mb-4 p-3 bg-gray-50 rounded-md">
                 <p className="text-sm text-gray-600">
@@ -867,7 +836,6 @@ const fetchItineraryData = async (pnr) => {
                 </p>
               </div>
             )}
-
             {editType === "Email" && (
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-orange-500">
@@ -879,7 +847,6 @@ const fetchItineraryData = async (pnr) => {
                     {currentPassenger?.email || ""}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     New Email Address <span className="text-red-500">*</span>
@@ -905,7 +872,6 @@ const fetchItineraryData = async (pnr) => {
                     </p>
                   )}
                 </div>
-                
                 <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
                   <button
                     type="button"
@@ -925,7 +891,6 @@ const fetchItineraryData = async (pnr) => {
                 </div>
               </div>
             )}
-
             {editType === "Phone Number" && (
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
@@ -937,7 +902,6 @@ const fetchItineraryData = async (pnr) => {
                     {currentPassenger?.phone || ""}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     New Phone Number <span className="text-red-500">*</span>
@@ -966,7 +930,6 @@ const fetchItineraryData = async (pnr) => {
                     Include country code for international numbers
                   </p>
                 </div>
-                
                 <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
                   <button
                     type="button"
@@ -986,7 +949,6 @@ const fetchItineraryData = async (pnr) => {
                 </div>
               </div>
             )}
-
             {editType === "Travel Document" && (
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-green-500">
@@ -1000,7 +962,6 @@ const fetchItineraryData = async (pnr) => {
                     <p><span className="font-medium">Expiry:</span> {currentPassenger?.documentExpiry ? formatDate(currentPassenger.documentExpiry) : "Not specified"}</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1027,7 +988,6 @@ const fetchItineraryData = async (pnr) => {
                       </p>
                     )}
                   </div>
-
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       New Expiry Date <span className="text-red-500">*</span>
@@ -1055,7 +1015,6 @@ const fetchItineraryData = async (pnr) => {
                 </div>
               </div>
             )}
-
             {editType === "Address" && (
               <div className="p-6 space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-purple-500">
@@ -1087,96 +1046,10 @@ const fetchItineraryData = async (pnr) => {
                       {formErrors.addressLine1 && (
                         <p className="mt-1 text-sm text-red-600">{formErrors.addressLine1}</p>
                       )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 2
-                      </label>
-                      <input
-                        type="text"
-                        value={editData.addressLine2 || ''}
-                        onChange={(e) => setEditData({...editData, addressLine2: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        placeholder="Apartment, suite, unit, etc. (optional)"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Street *
-                      </label>
-                      <input
-                        type="text"
-                        value={editData.street || ''}
-                        onChange={(e) => setEditData({...editData, street: e.target.value})}
-                        className={`w-full px-3 py-2 border rounded-md ${formErrors.street ? 'border-red-500' : 'border-gray-300'}`}
-                        placeholder="Street name"
-                      />
-                      {formErrors.street && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.street}</p>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          City *
-                        </label>
-                        <select
-                          value={editData.city || ''}
-                          onChange={(e) => setEditData({...editData, city: e.target.value})}
-                          className={`w-full px-3 py-2 border rounded-md ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
-                        >
-                          <option value="">Select City</option>
-                          <option value="Karachi">Karachi</option>
-                          <option value="Lahore">Lahore</option>
-                          <option value="Islamabad">Islamabad</option>
-                          <option value="Rawalpindi">Rawalpindi</option>
-                          <option value="Peshawar">Peshawar</option>
-                          <option value="Quetta">Quetta</option>
-                          <option value="Faisalabad">Faisalabad</option>
-                          <option value="Multan">Multan</option>
-                        </select>
-                        {formErrors.city && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Country *
-                        </label>
-                        <select
-                          value={editData.country || 'Pakistan'}
-                          onChange={(e) => setEditData({...editData, country: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        >
-                          <option value="Pakistan">Pakistan</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Postal Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={editData.postalCode || ''}
-                        onChange={(e) => {
-                          // Only allow numbers and limit to 5 digits
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                          setEditData({...editData, postalCode: value});
-                        }}
-                        className={`w-full px-3 py-2 border rounded-md ${formErrors.postalCode ? 'border-red-500' : 'border-gray-300'}`}
-                        placeholder="e.g. 54000"
-                        maxLength={5}
-                      />
-                      {formErrors.postalCode ? (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.postalCode}</p>
-                      ) : (
-                        <p className="mt-1 text-xs text-gray-500">5-digit postal code</p>
-                      )}
+                      <p className="mt-1 text-xs text-gray-500">House/Flat number, Building</p>
                     </div>
                   </div>
                 )}
-              
                 <div className="mt-6 flex justify-end space-x-3 pt-4 border-t sticky bottom-0 bg-white">
                   <button
                     type="button"
@@ -1201,9 +1074,8 @@ const fetchItineraryData = async (pnr) => {
             )}
           </div>
         </div>,
-        typeof window !== 'undefined' ? document.body : null
+        document.body
       )}
-
       {/* Ticket Modal */}
       {ticketModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100000] p-4">
@@ -1256,10 +1128,43 @@ const fetchItineraryData = async (pnr) => {
                 Close
               </Button>
             </div>
+          <div className="flex-1 bg-gray-50">
+            {ticketUrl ? (
+              <iframe title="Ticket PDF" src={ticketUrl} className="w-full h-full" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-600">Loading ticket...</div>
+            )}
           </div>
-        </div>,
-        typeof window !== 'undefined' ? document.body : null
-      )}
+          <div className="px-4 py-3 border-t flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                const iframe = document.querySelector('iframe[title="Ticket PDF"]');
+                if (iframe && iframe.contentWindow) {
+                  iframe.contentWindow.focus();
+                  iframe.contentWindow.print();
+                }
+              }}
+              className="bg-[#28a745] hover:bg-[#218838] text-white"
+            >
+              Print Ticket
+            </Button>
+            <Button
+              onClick={() => {
+                setTicketModalOpen(false);
+                if (ticketUrl) {
+                  URL.revokeObjectURL(ticketUrl);
+                  setTicketUrl("");
+                }
+              }}
+              className="bg-gray-500 hover:bg-gray-600 text-white"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
     </div>
   );
 }

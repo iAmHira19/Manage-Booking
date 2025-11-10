@@ -167,16 +167,38 @@ export default function SignUpPage() {
       
       if (ok) {
         setSignupSuccess(true);
+        
+        // Prepare user data to store in session
+        const userData = {
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          title: values.title,
+          country: values.country,
+          countryCode: values.countryCode,
+          mobile: values.mobile,
+          currency: values.currency,
+          language: values.language,
+          isAuthenticated: true
+        };
+        
+        // Store user data in session storage
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('user', JSON.stringify(userData));
+          sessionStorage.setItem('signIn', 'true');
+        }
+        
         toast.success("Account created successfully. Logging you in...");
         
         // Auto-login the user after successful signup
         try {
           await signInFn(values.email, values.password);
-          router.push('/');
+          router.push('/my-account');
         } catch (loginErr) {
           console.error('Auto-login failed:', loginErr);
           // Even if auto-login fails, the account was created successfully
           toast.success("Account created successfully! Please log in.");
+          router.push('/auth/signin');
         }
       } else {
         const errorMsg = res?.message || "Sign up failed, please try again";

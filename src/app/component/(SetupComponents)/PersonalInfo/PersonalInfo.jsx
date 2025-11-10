@@ -7,8 +7,12 @@ import { SlCalender } from "react-icons/sl";
 import { RxCross1 } from "react-icons/rx";
 import { DatePicker, Select } from "antd";
 import { getCity } from "@/utils/getCity";
+import { useSignInContext } from "@/providers/SignInStateProvider";
+import useBTCP from "@/hooks/useBTCP";
 
 const PersonalInfo = () => {
+  const { userId } = useSignInContext();
+  const userData = useBTCP(userId);
   const { InputBoxText } = components;
   const [genderSelected, setGenderSelected] = useState(false);
   const [cities, setCities] = useState("");
@@ -37,22 +41,54 @@ const PersonalInfo = () => {
 
   return (
     <div className="w-full max-w-full overflow-hidden">
+      {/* User Information Summary */}
+      {userData && (
+        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-gotham font-bold text-blue-900 mb-4">My Profile</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Full Name</p>
+              <p className="text-lg font-gotham">{userData.title} {userData.firstName} {userData.lastName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="text-lg font-gotham">{userData.email}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="text-lg font-gotham">{userData.countryCode} {userData.mobile}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Country</p>
+              <p className="text-lg font-gotham">{userData.country}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Personal Information Section */}
       <div className="w-full">
         <div className="title bg-blue-900 w-full py-4 px-4 md:px-6">
           <h3 className="text-orange-500 font-gotham font-semibold text-lg md:text-xl break-words">
-            Personal Information
+            Update Personal Information
           </h3>
         </div>
         <div className="form bg-white py-2 px-4 md:px-6 border">
           <Formik
             initialValues={{
-              firstName: "",
-              lastName: "",
-              title: "",
-              gender: "",
-              passportCountry: "",
-              passportNumber: "",
+              firstName: userData?.firstName || "",
+              lastName: userData?.lastName || "",
+              title: userData?.title || "",
+              gender: userData?.gender || "",
+              email: userData?.email || "",
+              phone: userData?.mobile ? `${userData.countryCode || ''}${userData.mobile}` : "",
+              country: userData?.country || "",
+              city: userData?.city || "",
+              address: userData?.address || "",
+              postalCode: userData?.postalCode || "",
+              dateOfBirth: userData?.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+              passportCountry: userData?.passportCountry || "",
+              passportNumber: userData?.passportNumber || "",
             }}
             validationSchema={Yup.object({
               firstName: Yup.string().required("FirstName is required"),
