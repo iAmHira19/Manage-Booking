@@ -44,7 +44,7 @@ const FloatingFeedback = () => {
             <p className="text-slate-600 text-sm font-gotham">Your opinion is important to us. Help us improve your online experience.</p>
             <button
               type="button"
-              className="border border-slate-400 rounded px-4 py-2 font-gotham hover:bg-slate-50 mt-auto"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-md px-6 py-2 transition-colors duration-200 mt-auto"
               onClick={() => setRatingOpen(true)}
             >
               Submit feedback
@@ -53,11 +53,11 @@ const FloatingFeedback = () => {
           {/* Column 2 */}
           <div className="flex flex-col items-center justify-center text-center gap-3 px-4 h-full min-h-[220px] md:border-l md:border-slate-200">
             <div className="text-5xl text-blue-900">🗨️</div>
-            <h3 className="text-2xl font-gotham text-blue-900">Get in <span className="underline">touch</span></h3>
+            <h3 className="text-2xl font-gotham text-blue-900">Get in <span>touch</span></h3>
             <p className="text-slate-600 text-sm font-gotham">Need answers? Here are the most convenient ways to contact us.</p>
             <button
               type="button"
-              className="border border-slate-400 rounded px-4 py-2 font-gotham hover:bg-slate-50 mt-auto"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-md px-6 py-2 transition-colors duration-200 mt-auto"
               onClick={() => { setOpen(false); setTimeout(() => router.push("/contact_us"), 0); }}
             >
               Contact us
@@ -66,11 +66,11 @@ const FloatingFeedback = () => {
           {/* Column 3 */}
           <div className="flex flex-col items-center justify-center text-center gap-3 px-4 h-full min-h-[220px] md:border-l md:border-slate-200">
             <div className="text-5xl text-blue-900">📄</div>
-            <h3 className="text-2xl font-gotham text-blue-900">Raise a <span className="underline">concern</span></h3>
+            <h3 className="text-2xl font-gotham text-blue-900">Raise a <span>concern</span></h3>
             <p className="text-slate-600 text-sm font-gotham">If you&apos;ve had a less than satisfying experience, we&apos;d like to hear from you.</p>
             <button
               type="button"
-              className="border border-slate-400 rounded px-4 py-2 font-gotham hover:bg-slate-50 mt-auto"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-md px-6 py-2 transition-colors duration-200 mt-auto"
               onClick={() => { setOpen(false); setTimeout(() => router.push("/contact_us"), 0); }}
             >
               Submit a complaint
@@ -88,7 +88,7 @@ const FloatingFeedback = () => {
         width={560}
         bodyStyle={{ padding: 24, textAlign: "center" }}
       >
-        <h3 className="text-2xl md:text-3xl font-gotham text-blue-900 mb-6">How satisfied were you with your website experience?</h3>
+        <h3 className="text-2xl md:text-3xl font-gotham text-orange-600 mb-6">How satisfied were you with your website experience?</h3>
         <div className="flex items-center justify-center gap-6 md:gap-8">
           {[
             { val: 5, label: "Very satisfied", color: "text-green-600" },

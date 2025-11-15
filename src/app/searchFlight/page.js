@@ -1886,7 +1886,7 @@ const Page = () => {
                 }}
               >
                 <span>{currency.tpCUR_DESCRIPTION}</span>
-                <span className="font-mono">{currency.tpCUR_CODE || currency.tpCUR_SYMBOL}</span>
+                <span className="font-medium">{currency.tpCUR_SYMBOL || currency.tpCUR_CODE}</span>
               </button>
             ))}
             {filteredCurrencyExchange && filteredCurrencyExchange.length === 0 && (

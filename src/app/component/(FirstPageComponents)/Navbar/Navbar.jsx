@@ -372,8 +372,8 @@ return (
             Manage Booking
           </Link>
         </li>
-        <li className="flex items-center">
-          <QatarLanguageSelector />
+        <li className="flex items-center text-blue-900">
+          <QatarLanguageSelector textClassName="text-blue-900 hover:text-orange-500 transition-colors duration-200" />
         </li>
         <li
           className={`relative group ${!isSignedIn || !displayUsername ? "inline-block" : "hidden"}`}
@@ -385,7 +385,7 @@ return (
               e.preventDefault();
               router.push("/auth/signin");
             }}
-            className="text-blue-900 text-base flex items-center font-gotham uppercase whitespace-nowrap"
+            className="text-blue-900 text-base flex items-center font-gotham uppercase whitespace-nowrap hover:text-orange-500 transition-colors duration-200"
           >
             <FaLock className="mr-1" /> Log In <MdArrowDropDown />
           </Link>
@@ -971,6 +971,7 @@ return (
                     }}
                   >
                     <span>{currency.tpCUR_DESCRIPTION}</span>
+                    <span className="font-medium">{currency.tpCUR_SYMBOL}</span>
                     {(() => {
                       const iso = deriveIsoFromCurrency(currency);
                       const src = getFlagSrc(iso);

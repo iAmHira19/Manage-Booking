@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FiGlobe, FiSearch, FiX, FiChevronRight, FiHome, FiInfo, FiPhone } from 'react-icons/fi';
+import { FiGlobe, FiSearch, FiX, FiChevronRight, FiHome, FiInfo, FiPhone, FiGlobe as FiGlobeIcon } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaLanguage } from 'react-icons/fa';
 
 // Function to get flag emoji from country code
 const getFlagEmoji = (countryCode) => {
@@ -130,41 +131,37 @@ const LanguageItem = ({ lang, isSelected, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className={`p-4 rounded-lg cursor-pointer transition-all ${
+      className={`p-4 cursor-pointer transition-all flex items-center justify-between ${
         isSelected 
-          ? 'bg-orange-50 border-2 border-orange-200' 
-          : 'bg-white hover:bg-gray-50 border border-gray-100 hover:border-orange-100'
+          ? 'bg-orange-50 border-r-4 border-orange-600' 
+          : 'hover:bg-gray-50 border-b border-gray-100 last:border-b-0'
       }`}
     >
-      <div className="flex items-center space-x-4">
-        <div className="flex-shrink-0">
-          <div className="h-10 w-10 rounded-full bg-orange-50 flex items-center justify-center text-2xl">
-            {lang.flag || '🌐'}
-          </div>
+      <div className="flex items-center">
+        <div className="text-2xl mr-4">
+          {lang.flag || '🌐'}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
+        <div>
+          <p className="text-base font-medium text-gray-800">
             {lang.name}
           </p>
-          <p className="text-xs text-orange-600 truncate">
-            {lang.nativeName !== lang.name ? lang.nativeName : ''}
+          <p className="text-sm text-gray-500">
+            {lang.nativeName}
           </p>
         </div>
-        {isSelected && (
-          <div className="flex-shrink-0">
-            <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center">
-              <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        )}
       </div>
+      {isSelected && (
+        <div className="text-orange-600">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 };
 
-const QatarLanguageSelector = () => {
+const QatarLanguageSelector = ({ textClassName = 'text-blue-900' }) => {
   const [regions, setRegions] = useState(defaultRegions);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -253,10 +250,14 @@ const QatarLanguageSelector = () => {
 
   // Filter languages based on search query
   const filteredLanguages = searchQuery
-    ? getLanguagesForSelectedRegion().filter(lang => 
-        lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (lang.nativeName && lang.nativeName.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
+    ? getLanguagesForSelectedRegion().filter(lang => {
+        const query = searchQuery.toLowerCase();
+        return (
+          (lang.name && lang.name.toLowerCase().includes(query)) ||
+          (lang.nativeName && lang.nativeName.toLowerCase().includes(query)) ||
+          (lang.countryName && lang.countryName.toLowerCase().includes(query))
+        );
+      })
     : getLanguagesForSelectedRegion();
 
   // Handle language selection
@@ -286,56 +287,56 @@ const QatarLanguageSelector = () => {
   return (
     <div className="relative" ref={panelRef}>
       {/* Language Selector Button */}
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+      <button
         onClick={toggleModal}
-        className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+        className="text-base font-gotham uppercase hover:text-orange-500 transition-colors duration-200 whitespace-nowrap flex items-center"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-controls="language-selector-dialog"
       >
-        <FiGlobe className="text-orange-500" />
-        <span className="font-medium">
-          {selectedLanguage ? `${selectedLanguage.name} (${selectedLanguage.countryCode})` : 'Select Language'}
-        </span>
-        <FiChevronRight className={`ml-1 h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </motion.button>
+        <div className={`flex items-center space-x-1 cursor-pointer ${textClassName}`}>
+          <FiGlobe className="h-5 w-5" />
+          <span className="text-sm font-medium">{selectedLanguage?.code?.toUpperCase() || 'EN'}</span>
+        </div>
+      </button>
 
       {/* Full-screen Language Selector Modal */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto">
-            {/* Overlay */}
-            <div 
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            {/* Overlay with blur effect */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
               onClick={closeModal}
               aria-hidden="true"
-              style={{ pointerEvents: 'auto' }}
             />
 
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="flex min-h-screen items-center justify-center p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="language-selector-title"
-              id="language-selector-dialog"
-            >
-              <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-white/20">
+            {/* Main Modal Container */}
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.2 }}
+                className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90vh] max-h-[900px]"
+                aria-modal="true"
+                aria-labelledby="language-selector-title"
+                id="language-selector-dialog"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {/* Header */}
-                <div className="p-6 border-b border-gray-200 bg-white/80">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-900" id="language-selector-title">
-                      Select your language
+                <div className="p-8 border-b border-gray-200 bg-white shadow-sm">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold flex items-center text-gray-800" id="language-selector-title">
+                      <FaLanguage className="mr-3 text-orange-600" size={24} />
+                      Select your preferred language
                     </h2>
                     <button
                       onClick={closeModal}
-                      className="text-gray-400 hover:text-gray-500"
+                      className="p-2 rounded-full hover:bg-black/10 text-white hover:text-white transition-colors"
                       aria-label="Close"
                     >
                       <FiX className="h-6 w-6" />
@@ -343,117 +344,143 @@ const QatarLanguageSelector = () => {
                   </div>
                   
                   {/* Search */}
-                  <div className="mt-4 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="relative max-w-2xl">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <FiSearch className="h-5 w-5 text-gray-400" />
                     </div>
                     <input
                       type="text"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
-                      placeholder="Search languages..."
+                      className="block w-full pl-12 pr-12 py-3 border border-gray-200 bg-white text-gray-800 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base transition-all"
+                      placeholder="Search for a language..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      autoFocus
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Clear search"
                       >
-                        <FiX className="h-5 w-5 text-gray-400 hover:text-gray-500" />
+                        <FiX className="h-5 w-5" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Content */}
-                <div 
-                  className="flex h-[500px] overflow-hidden relative z-10 bg-white/90"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                {/* Main Content */}
+                <div className="flex flex-1 overflow-hidden bg-gray-50">
                   {/* Sidebar */}
-                  <div 
-                    className="w-64 bg-gradient-to-b from-orange-50 to-orange-100 border-r border-orange-200 overflow-y-auto"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="w-56 bg-white border-r border-gray-200 overflow-y-auto">
                     <div className="p-4">
-                      <h3 className="text-sm font-medium text-orange-700 uppercase tracking-wider mb-4 flex items-center">
-                        <FiGlobe className="mr-2" /> Regions
+                      <h3 className="text-sm font-semibold text-gray-700 mb-4 pl-2 font-gotham">
+                        Regions
                       </h3>
                       <nav className="space-y-1">
-                        {regions.map((region) => (
+                        {[
+                          { name: 'Africa', count: 55 },
+                          { name: 'Americas', count: 52 },
+                          { name: 'Asia', count: 50 },
+                          { name: 'Europe', count: 46 },
+                          { name: 'Oceania', count: 25 }
+                        ].map((region) => (
                           <button
                             key={region.name}
                             onClick={() => setSelectedRegion(region.name)}
-                            className={`w-full text-left px-4 py-2.5 text-sm font-medium rounded-md flex items-center justify-between transition-colors duration-200 ${
+                            className={`w-full text-left px-4 py-3 text-sm transition-colors relative font-gotham ${
                               selectedRegion === region.name
-                                ? 'bg-orange-100 text-orange-700 font-medium border-l-4 border-orange-500'
-                                : 'text-orange-700 hover:bg-orange-50 hover:border-l-4 hover:border-orange-200'
+                                ? 'bg-orange-50 text-orange-600 font-medium' 
+                                : 'text-gray-700 hover:bg-gray-50'
                             }`}
                           >
-                            <span>{region.name}</span>
-                            <FiChevronRight className="h-4 w-4" />
+                            {selectedRegion === region.name && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500 rounded-r"></div>
+                            )}
+                            <span className="flex justify-between items-center">
+                              <span>{region.name}</span>
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                {region.count}
+                              </span>
+                            </span>
                           </button>
                         ))}
                       </nav>
-                      
-                      <div className="mt-8">
-                        <h3 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2 px-2">
-                          Menu
-                        </h3>
-                        <nav className="space-y-1">
-                          <a href="#" className="flex items-center px-3 py-2.5 text-sm font-medium text-orange-700 hover:bg-orange-50 rounded-md group transition-colors">
-                            <FiHome className="mr-3 h-5 w-5 text-orange-500 group-hover:text-orange-700" />
-                            Home
-                          </a>
-                          <a href="#" className="flex items-center px-3 py-2.5 text-sm font-medium text-orange-700 hover:bg-orange-50 rounded-md group transition-colors">
-                            <FiInfo className="mr-3 h-5 w-5 text-orange-500 group-hover:text-orange-700" />
-                            About
-                          </a>
-                          <a href="#" className="flex items-center px-3 py-2.5 text-sm font-medium text-orange-700 hover:bg-orange-50 rounded-md group transition-colors">
-                            <FiPhone className="mr-3 h-5 w-5 text-orange-500 group-hover:text-orange-700" />
-                            Contact
-                          </a>
-                        </nav>
-                      </div>
                     </div>
                   </div>
 
                   {/* Main content */}
-                  <div className="flex-1 overflow-y-auto p-6 bg-white/80">
+                  <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
                     {selectedRegion && (
-                      <>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">
-                          {selectedRegion} Languages
-                        </h3>
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            {selectedRegion} Languages
+                          </h3>
+                          <span className="text-xs font-medium px-3 py-1 bg-white rounded-full text-gray-600 border border-gray-200">
+                            {filteredLanguages.length} {filteredLanguages.length === 1 ? 'language' : 'languages'} found
+                          </span>
+                        </div>
                         
                         {filteredLanguages.length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredLanguages.map((lang) => (
-                              <LanguageItem
-                                key={`${lang.countryCode}-${lang.code}`}
-                                lang={lang}
-                                isSelected={selectedLanguage?.code === lang.code && selectedLanguage?.countryCode === lang.countryCode}
+                            {filteredLanguages.map((lang, index) => (
+                              <div
+                                key={`${lang.countryCode}-${lang.code}-${index}`}
                                 onClick={() => handleLanguageSelect(lang)}
-                              />
+                                className={`p-4 rounded-lg flex flex-col cursor-pointer transition-colors ${
+                                  selectedLanguage?.code === lang.code && selectedLanguage?.countryCode === lang.countryCode
+                                    ? 'bg-orange-50 border-l-4 border-orange-500'
+                                    : 'hover:bg-gray-50 border border-gray-100'
+                                }`}
+                              >
+                                <div className="flex items-start">
+                                  <span className="text-2xl mr-3 mt-1 flex-shrink-0" role="img" aria-label={lang.countryName}>
+                                    {lang.flag}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="font-gotham font-medium text-gray-900">
+                                      {lang.name}
+                                    </div>
+                                    <div className="text-sm text-gray-600 font-normal mt-1">
+                                      {lang.countryName}
+                                    </div>
+                                    {lang.nativeName && lang.nativeName !== lang.name && (
+                                      <div className="text-xs text-gray-500 font-light mt-1">
+                                        {lang.nativeName}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {selectedLanguage?.code === lang.code && selectedLanguage?.countryCode === lang.countryCode && (
+                                    <svg 
+                                      className="h-5 w-5 text-orange-500 flex-shrink-0 ml-2 mt-1" 
+                                      fill="none" 
+                                      viewBox="0 0 24 24" 
+                                      stroke="currentColor"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-12">
-                            <FiGlobe className="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No languages found</h3>
-                            <p className="mt-1 text-sm text-gray-500">
+                          <div className="text-center py-16 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <FiGlobe className="mx-auto h-20 w-20 text-gray-300 mb-4" />
+                            <h3 className="text-xl font-medium text-gray-800">No languages found</h3>
+                            <p className="mt-2 text-gray-500 max-w-md mx-auto">
                               {searchQuery
-                                ? 'Try adjusting your search or filter to find what you\'re looking for.'
+                                ? 'We couldn\'t find any languages matching your search. Try different keywords.'
                                 : 'No languages available for the selected region.'}
                             </p>
                           </div>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
